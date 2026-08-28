@@ -35,7 +35,9 @@ npm run test:e2e       # passed; 12/12 Chromium checks across desktop + 390px mo
 
 ### Deployment notes
 
-The artifact remains a static Vite PWA with `dist/index.html` at its root. Deploy `dist/` with the factory Azure Static Web Apps deployment, which honours `staticwebapp.config.json`; do not use a plain file server for the final response-policy checks because it will not apply that deploy configuration. After publish, verify the live asset cache/header policy and candidate/live hashes before marking the release independently verified.
+The artifact remains a static Vite PWA with `dist/index.html` at its root. The final deployed revision is `417c7d6`; Azure Static Web Apps deployment `6d146169-3e88-42de-8b83-6af6388339e5` succeeded at `https://route-intent-planner.sociobot.in/`.
+
+Post-deploy verification passed with `/opt/fleet/lib/verify-url.sh`: HTTPS 200; title, `lang=en`, one `h1`, `<main>`, image alt text, labelled buttons, and zero console/page errors. The live index and all referenced hashed JS/CSS assets byte-match `dist/`; the live asset cache policy is `public, max-age=31536000, immutable`; `/sw.js` is `no-cache, no-store, must-revalidate`; and the linked `/manifest.json` is `application/json` with `no-cache`. Live responses include the configured CSP, Permissions-Policy, `X-Frame-Options: DENY`, and `X-Content-Type-Options: nosniff`.
 
 ## Independent verification — 2026-08-28
 
