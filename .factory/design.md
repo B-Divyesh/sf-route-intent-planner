@@ -33,6 +33,7 @@ The base rhythm is 4px, with primary intervals at 8, 12, 16, 24, 32, 48, and 64p
 
 - Add route points by clicking/tapping the paper map or by importing GPX.
 - Every consecutive pair is a segment. A segment can be `locked` (must follow the authored trace), a `gap` (the only part an external router may optimize), or `flagged` (review before export).
+- Routing is a deliberate `Optimize gaps` action, never an automatic redraw. It calls the OpenStreetMap-compatible bicycle router with each selected gap’s endpoints only, retains its interior geometry locally, and always exports the author’s exact endpoint coordinates around that geometry. This makes the locked-corridor invariant visible and testable.
 - Segment state is never color-only: line style, labels, and the inspection ledger repeat it.
 - Editing a point updates analysis immediately. Undo/redo preserve author confidence.
 - Export is always available; paid Route Tape unlock adds more than 12 points, unlimited saved route tapes, and JSON backup/restore. Accessibility, GPX export, and all safety/deviation warnings stay free.

@@ -1,7 +1,10 @@
 export const LICENSE_KEY = 'sb_license:route-intent-planner';
 const VERDICT_KEY = `${LICENSE_KEY}:verdict`;
 const DAY = 86_400_000;
-const API_BASE = import.meta.env.VITE_BILLING_API || 'https://pilot-api.sociobot.in';
+// Production is the safe default. Staging can opt into the pilot endpoint at
+// build time; public releases must never advertise a pilot checkout.
+const API_BASE = import.meta.env.VITE_BILLING_API || 'https://api.sociobot.in';
+export const billingEnabled = import.meta.env.VITE_BILLING_ENABLED === 'true';
 
 interface Verdict { valid: boolean; checkedAt: number }
 

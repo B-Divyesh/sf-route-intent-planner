@@ -1,4 +1,4 @@
-const CACHE = 'route-tape-shell-v4';
+const CACHE = 'route-tape-shell-v5';
 const SHELL = ['/privacy/', '/terms/', '/offline.html', '/manifest.json', '/art/route-tape-hero.webp', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {

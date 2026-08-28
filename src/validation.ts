@@ -20,6 +20,12 @@ function validPoint(value: unknown): value is RoutePoint {
   return isWgs84Coordinate(value.lat, value.lon) && (value.elevation === undefined || (typeof value.elevation === 'number' && Number.isFinite(value.elevation)));
 }
 
+function validRoutedPoints(value: unknown): boolean {
+  return Array.isArray(value)
+    && value.length <= 2_000
+    && value.every((point) => record(point) && typeof point.lat === 'number' && typeof point.lon === 'number' && isWgs84Coordinate(point.lat, point.lon));
+}
+
 function validSegment(value: unknown): value is RouteSegment {
   return record(value)
     && nonEmptyString(value.id)
@@ -27,7 +33,8 @@ function validSegment(value: unknown): value is RouteSegment {
     && nonEmptyString(value.toId)
     && typeof value.name === 'string'
     && typeof value.mode === 'string'
-    && MODES.includes(value.mode as SegmentMode);
+    && MODES.includes(value.mode as SegmentMode)
+    && (value.routedPoints === undefined || validRoutedPoints(value.routedPoints));
 }
 
 /**
@@ -53,7 +60,9 @@ export function isRouteDraft(value: unknown): value is RouteDraft {
   if (pointIds.size !== route.points.length || segmentIds.size !== route.segments.length) return false;
 
   return route.segments.every((segment, index) => (
-    segment.fromId === route.points[index].id && segment.toId === route.points[index + 1].id
+    segment.fromId === route.points[index].id
+    && segment.toId === route.points[index + 1].id
+    && (segment.mode === 'gap' || !segment.routedPoints?.length)
   ));
 }
 

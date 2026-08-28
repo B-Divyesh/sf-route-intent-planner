@@ -1,6 +1,6 @@
 # Route Intent Planner
 
-Route Intent Planner is a local-first drafting sheet for cyclists and ride leaders who already know the roads or paths they want. Draw or import a rough GPX, label and lock mandatory corridors, leave only intentional gaps open, inspect off-intent warnings, and export standard GPX without a routing engine silently replacing the route.
+Route Intent Planner is a local-first drafting sheet for cyclists and ride leaders who already know the roads or paths they want. Draw or import a rough GPX, label and lock mandatory corridors, then explicitly optimize only intentional gaps on an OpenStreetMap-compatible bicycle network. Export standard GPX without a routing engine silently replacing locked route intent.
 
 Live target: <https://route-intent-planner.sociobot.in>.
 
@@ -11,11 +11,11 @@ Ride leaders preparing club routes, cyclists recreating a known course, and anyo
 ## What v1 includes
 
 - Click/tap drafting sheet, exact coordinate entry, and GPX import.
-- Per-segment `locked`, `open gap`, and `flagged` intent with optional road/path names.
+- Per-segment `locked`, `open gap`, and `flagged` intent with optional road/path names. `Optimize gaps` sends only selected gap endpoints to the public OpenStreetMap bicycle router; locked points and corridors are never sent or changed.
 - Distance and long-jump checks, explicit warnings, undo/redo, and free GPX export.
 - Current-draft recovery and a three-route free archive in IndexedDB.
 - Installable PWA shell with offline drafting, import, editing, saving, and export.
-- Optional US$9 one-time Route Tape license for unlimited saved routes and JSON archive backup/restore. Checkout and license verification use Sociobot; there is no embedded payment provider.
+- Route Tape is prepared as an optional US$9 one-time license for unlimited saved routes and JSON archive backup/restore. Checkout remains hidden until the factory enables the product in the Sociobot catalog; there is no embedded payment provider.
 - No analytics, accounts, runtime fonts, map tiles, or route-coordinate uploads.
 
 ## Run and verify
@@ -36,10 +36,10 @@ The exact production build command is `npm run build`. Static output is written 
 
 ## Data and billing configuration
 
-Routes remain in browser storage until the user exports or deletes them. The app defaults to the Sociobot pilot billing API during factory staging. Release automation can switch it without source edits:
+Routes and cached gap geometry remain in browser storage until the user exports or deletes them. The app makes no automatic off-origin request. Gap routing occurs only after a rider presses `Optimize gaps`, and sends only that gap’s two endpoints to `routing.openstreetmap.de`. The app defaults to the production Sociobot billing API; factory staging can switch it without source edits:
 
 ```sh
-VITE_BILLING_API=https://api.sociobot.in npm run build
+VITE_BILLING_API=https://pilot-api.sociobot.in VITE_BILLING_ENABLED=true npm run build
 ```
 
 The billing URL uses the product slug, never a provider product ID. See [`privacy/index.html`](privacy/index.html), [`terms/index.html`](terms/index.html), and [`.factory/design.md`](.factory/design.md).

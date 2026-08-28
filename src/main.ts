@@ -1,7 +1,8 @@
 import './styles.css';
-import { addPoint, analyze, emptyDraft, isWgs84Coordinate, parseGpx, sampleDraft, toGpx } from './route';
+import { addPoint, analyze, emptyDraft, isWgs84Coordinate, parseGpx, sampleDraft, segmentCoordinates, toGpx } from './route';
+import { routeOpenGap } from './router';
 import { deleteRoute, importBackup, listRoutes, saveRoute } from './storage';
-import { cachedUnlock, captureLicense, checkoutUrl, storeLicense, verifyLicense } from './license';
+import { billingEnabled, cachedUnlock, captureLicense, checkoutUrl, storeLicense, verifyLicense } from './license';
 import type { RouteDraft, SegmentMode } from './types';
 import { isRouteDraft } from './validation';
 
@@ -40,8 +41,9 @@ function commit(next: RouteDraft, message: string): void {
 
 function pointBounds() {
   if (!draft.points.length) return { minLat: 51.48, maxLat: 51.58, minLon: -0.18, maxLon: -0.02 };
-  const lats = draft.points.map((point) => point.lat);
-  const lons = draft.points.map((point) => point.lon);
+  const routed = draft.segments.flatMap((segment) => segment.mode === 'gap' ? segment.routedPoints || [] : []);
+  const lats = [...draft.points, ...routed].map((point) => point.lat);
+  const lons = [...draft.points, ...routed].map((point) => point.lon);
   const minLat = Math.min(...lats); const maxLat = Math.max(...lats);
   const minLon = Math.min(...lons); const maxLon = Math.max(...lons);
   const latPad = Math.max((maxLat - minLat) * .12, .003);
@@ -58,9 +60,14 @@ function mapMarkup(): string {
   const points = new Map(draft.points.map((point) => [point.id, point]));
   const lines = draft.segments.map((segment, index) => {
     const from = points.get(segment.fromId)!; const to = points.get(segment.toId)!;
+    const coordinates = segmentCoordinates(segment, from, to);
+    const line = coordinates.map((point) => {
+      const [x, y] = xy(point.lat, point.lon);
+      return `${x},${y}`;
+    }).join(' ');
     const [x1, y1] = xy(from.lat, from.lon); const [x2, y2] = xy(to.lat, to.lon);
     return `<g class="route-line route-line--${segment.mode}">
-      <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" vector-effect="non-scaling-stroke" />
+      <polyline points="${line}" vector-effect="non-scaling-stroke" />
       <text x="${(x1 + x2) / 2}" y="${(y1 + y2) / 2 - 9}" aria-hidden="true">${index + 1}</text>
     </g>`;
   }).join('');
@@ -119,7 +126,7 @@ function render(): void {
         <div class="hero-copy">
           <p class="eyebrow">A route tape, not a reroute machine</p>
           <h1 id="page-title">Keep the line<br><em>you</em> chose.</h1>
-          <p class="lede">Pin a rough ride, lock the roads and paths that matter, and leave only the gaps open. Every deviation stays visible before GPX export.</p>
+          <p class="lede">Pin a rough ride, lock the roads and paths that matter, and optimize only the gaps you open. Every deviation stays visible before GPX export.</p>
           <div class="hero-notes"><span>Works offline</span><span>No map account</span><span>GPX stays yours</span></div>
         </div>
         <figure class="hero-art">
@@ -144,7 +151,7 @@ function render(): void {
         </div>
         <div class="workspace">
           <div class="drafting-panel">
-            <div class="map-heading"><p><strong>Drafting sheet</strong><span>Tap anywhere to add a point</span></p><span class="map-scale">SCHEMATIC / WGS84</span></div>
+            <div class="map-heading"><p><strong>Drafting sheet</strong><span>Tap anywhere to add a point</span></p><span class="map-scale">OSM-READY / WGS84</span></div>
             <svg id="route-map" class="route-map" viewBox="0 0 720 480" role="img" aria-label="Schematic route drafting sheet. Use the coordinate form below for a keyboard-accessible way to add points.">
               <defs><pattern id="minor-grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M 24 0 L 0 0 0 24" /></pattern><pattern id="major-grid" width="120" height="120" patternUnits="userSpaceOnUse"><rect width="120" height="120" fill="url(#minor-grid)"/><path d="M 120 0 L 0 0 0 120" /></pattern></defs>
               <rect width="720" height="480" class="map-paper"/><rect width="720" height="480" fill="url(#major-grid)" class="map-grid"/>${mapMarkup()}
@@ -154,16 +161,16 @@ function render(): void {
               <div><label for="lon">Longitude</label><input id="lon" name="lon" inputmode="decimal" type="number" min="-180" max="180" step="any" required /></div>
               <button class="button" type="submit">Add coordinate</button>
             </form>
-            <p class="map-disclaimer">No basemap or hidden road optimizer: this offline sheet preserves your coordinates exactly. Open gaps are straight advisory connectors; verify them against current road access before riding.</p>
+            <p class="map-disclaimer">Locked pins always stay exact. Open gaps can be routed on demand with the OpenStreetMap bicycle network; only their endpoints are sent, never locked corridors. Cached results stay on this device for offline export.</p>
           </div>
           <aside class="ledger" aria-labelledby="ledger-title">
-            <div class="ledger-heading"><div><span>INSPECTION LEDGER</span><h3 id="ledger-title">What must stay?</h3></div><button id="analyze" class="button button--signal">${analysisVisible ? 'Refresh check' : 'Check route'}</button></div>
+            <div class="ledger-heading"><div><span>INSPECTION LEDGER</span><h3 id="ledger-title">What must stay?</h3></div><div class="ledger-actions"><button id="optimize-gaps" class="button button--quiet" ${draft.segments.some((segment) => segment.mode === 'gap') ? '' : 'disabled'}>Optimize gaps</button><button id="analyze" class="button button--signal">${analysisVisible ? 'Refresh check' : 'Check route'}</button></div></div>
             ${summaryMarkup()}
             <ul class="segment-list">${segmentMarkup()}</ul>
           </aside>
         </div>
         <div class="action-deck">
-          <div><p class="action-label">MASTER OUTPUT</p><h3>Preserve, then export.</h3><p>Locked sections and their labels are written into the GPX metadata. Review warnings stay free.</p></div>
+          <div><p class="action-label">MASTER OUTPUT</p><h3>Preserve, then export.</h3><p>Locked coordinates remain exact; optimized geometry is written only inside open gaps. Review warnings stay free.</p></div>
           <div class="action-buttons"><button id="save" class="button">Save on device</button><button id="export-gpx" class="button button--dark" ${draft.points.length >= 2 ? '' : 'disabled'}>Export GPX</button></div>
         </div>
         <div id="message" class="message ${error ? 'message--error' : ''}" role="status" aria-live="polite">${escapeHtml(error || status)}</div>
@@ -178,7 +185,7 @@ function render(): void {
         <div class="unlock-label">ONE-TIME ROUTE TAPE</div>
         <div><h2 id="unlock-title">Keep an unlimited shelf.</h2><p>US$9 once. Save more than three route tapes and back up or restore the complete archive. GPX import/export, safety warnings, and offline drafting stay free.</p><p class="merchant">Sociobot/Dodo is the merchant of record. Refunds are handled there and revoke the license.</p></div>
         <div class="license-box">
-          ${unlocked ? '<p class="unlocked-mark">✓ Route Tape unlocked on this device</p>' : `<a class="button button--signal buy-link" href="${checkoutUrl()}">Buy Route Tape — $9</a><label for="license-token">Have a license? Paste it</label><div><input id="license-token" autocomplete="off" spellcheck="false" /><button id="restore-license" class="button">Verify</button></div>`}
+          ${unlocked ? '<p class="unlocked-mark">✓ Route Tape unlocked on this device</p>' : `${billingEnabled ? `<a class="button button--signal buy-link" href="${checkoutUrl()}">Buy Route Tape — $9</a>` : '<p class="purchase-paused">Route Tape purchases are not open yet. The complete free planner remains available now.</p>'}<label for="license-token">Have a license? Paste it</label><div><input id="license-token" autocomplete="off" spellcheck="false" /><button id="restore-license" class="button">Verify</button></div>`}
           <p><a href="/privacy/">Privacy</a> · <a href="/terms/">Terms</a></p>
         </div>
       </section>
@@ -227,9 +234,35 @@ function bindEvents(): void {
     });
     row.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((button) => button.addEventListener('click', () => {
       const mode = button.dataset.mode as SegmentMode;
-      const segments = draft.segments.map((segment) => segment.id === segmentId ? { ...segment, mode } : segment);
-      commit({ ...draft, segments, updatedAt: new Date().toISOString() }, mode === 'locked' ? 'Segment locked to your authored line.' : mode === 'gap' ? 'Gap opened for advisory optimization.' : 'Segment flagged for review.');
+      const segments = draft.segments.map((segment) => segment.id === segmentId ? { ...segment, mode, routedPoints: mode === 'gap' ? segment.routedPoints : undefined } : segment);
+      commit({ ...draft, segments, updatedAt: new Date().toISOString() }, mode === 'locked' ? 'Segment locked to your authored line.' : mode === 'gap' ? 'Gap opened. Choose Optimize gaps to route only this section.' : 'Segment flagged for review.');
     }));
+  });
+  document.querySelector('#optimize-gaps')?.addEventListener('click', async () => {
+    const gaps = draft.segments.filter((segment) => segment.mode === 'gap');
+    if (!gaps.length) return;
+    if (!navigator.onLine) { error = 'You are offline. Cached optimized gaps can still export, but new gaps need a connection.'; render(); return; }
+    status = `Optimizing ${gaps.length} open gap${gaps.length === 1 ? '' : 's'} on the OpenStreetMap bicycle network…`;
+    render();
+    const points = new Map(draft.points.map((point) => [point.id, point]));
+    try {
+      let optimized = 0;
+      let segments = draft.segments;
+      for (const gap of gaps) {
+        // The public OSM-compatible service asks clients to stay under one
+        // request per second. User-selected gaps are serialized accordingly.
+        if (optimized) await new Promise((resolve) => setTimeout(resolve, 1_050));
+        const from = points.get(gap.fromId)!;
+        const to = points.get(gap.toId)!;
+        const routedPoints = await routeOpenGap(from, to);
+        segments = segments.map((segment) => segment.id === gap.id ? { ...segment, routedPoints } : segment);
+        optimized += 1;
+      }
+      commit({ ...draft, segments, updatedAt: new Date().toISOString() }, `${optimized} open gap${optimized === 1 ? '' : 's'} optimized. Locked coordinates were not changed.`);
+    } catch (reason) {
+      error = reason instanceof Error ? reason.message : 'The bicycle router could not optimize the open gaps.';
+      render();
+    }
   });
   document.querySelector('#analyze')?.addEventListener('click', () => { analysisVisible = true; const count = analyze(draft).filter((item) => item.severity === 'review').length; status = count ? `${count} section${count === 1 ? ' needs' : 's need'} review before the ride.` : 'All sections are locked and within the long-jump check.'; render(); });
   document.querySelector('#export-gpx')?.addEventListener('click', () => download(`${safeName(draft.name)}.gpx`, toGpx(draft), 'application/gpx+xml'));
@@ -260,6 +293,9 @@ window.addEventListener('online', render);
 window.addEventListener('offline', render);
 
 async function start(): Promise<void> {
+  // Render synchronously so the skip link and first keyboard traversal never
+  // race the IndexedDB read with a later wholesale app replacement.
+  render();
   try { savedRoutes = await listRoutes(); } catch { error = 'Local archive is unavailable in this browser. GPX import and export still work.'; }
   render();
   if (token && navigator.onLine) {

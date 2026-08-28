@@ -7,12 +7,24 @@ export interface RoutePoint {
   elevation?: number;
 }
 
+/** A coordinate returned by the opt-in OpenStreetMap bicycle router. */
+export interface RoutedPoint {
+  lat: number;
+  lon: number;
+}
+
 export interface RouteSegment {
   id: string;
   fromId: string;
   toId: string;
   mode: SegmentMode;
   name: string;
+  /**
+   * Interior geometry for an optimized open gap. The authored endpoints stay
+   * in `points`, so a router can never move a locked pin or rewrite a route
+   * corridor by accident.
+   */
+  routedPoints?: RoutedPoint[];
 }
 
 export interface RouteDraft {

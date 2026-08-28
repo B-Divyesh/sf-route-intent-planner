@@ -74,7 +74,11 @@ input { width: 100%; min-height: 44px; border: 1.5px solid var(--ink); border-ra
 .button--quiet { box-shadow: none; border-color: var(--rule); }
 .button--signal { background: var(--signal); color: white; }
 .file-button { position: relative; cursor: pointer; }
-.file-button input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+/* The native input fills its labelled button so it retains a 44px hit area.
+   :focus-within puts the designed focus ring on the visible control. */
+.file-button input { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 44px; margin: 0; opacity: 0; cursor: pointer; }
+.file-button:focus-within { outline: 3px solid var(--blue); outline-offset: 3px; }
+.file-button:focus-within input { outline: 0; }
 .is-disabled { opacity: .45; cursor: not-allowed; }
 
 .workspace { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(350px, .75fr); border: 2px solid var(--ink); }
@@ -86,10 +90,10 @@ input { width: 100%; min-height: 44px; border: 1.5px solid var(--ink); border-ra
 .route-map { display: block; width: 100%; aspect-ratio: 3 / 2; min-height: 300px; background: #e8e0cc; cursor: crosshair; touch-action: manipulation; }
 .map-paper { fill: #ebe4d2; }
 .map-grid { stroke: #6b665c38; stroke-width: 1; fill: transparent; }
-.route-line line { stroke: var(--tape); stroke-width: 8; stroke-linecap: square; }
+.route-line line, .route-line polyline { fill: none; stroke: var(--tape); stroke-width: 8; stroke-linecap: square; stroke-linejoin: round; }
 .route-line text { fill: var(--ink); font: 800 12px var(--mono); paint-order: stroke; stroke: var(--paper); stroke-width: 4px; }
-.route-line--gap line { stroke: var(--blue); stroke-width: 6; stroke-dasharray: 14 10; }
-.route-line--flagged line { stroke: var(--signal); stroke-width: 10; stroke-dasharray: 4 8; }
+.route-line--gap line, .route-line--gap polyline { stroke: var(--blue); stroke-width: 6; stroke-dasharray: 14 10; }
+.route-line--flagged line, .route-line--flagged polyline { stroke: var(--signal); stroke-width: 10; stroke-dasharray: 4 8; }
 .route-point circle { fill: var(--paper-raised); stroke: var(--ink); stroke-width: 3; }
 .route-point text { fill: var(--ink); font: 800 10px var(--mono); }
 .empty-map path { fill: none; stroke: #246b5b88; stroke-width: 8; stroke-dasharray: 13 10; }
@@ -100,6 +104,7 @@ input { width: 100%; min-height: 44px; border: 1.5px solid var(--ink); border-ra
 .map-disclaimer { margin: 0; padding: 10px 14px 14px; background: var(--paper); color: var(--ink-soft); font-size: 12px; }
 .ledger { min-width: 0; background: var(--paper-raised); }
 .ledger-heading { gap: 12px; }
+.ledger-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .ledger-heading span { color: var(--signal-ink); font-size: 11px; font-weight: 900; letter-spacing: .1em; }
 .ledger-heading h3 { margin: 0; font: 900 21px var(--display); text-transform: uppercase; }
 .route-stats { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--rule); }
@@ -114,7 +119,7 @@ input { width: 100%; min-height: 44px; border: 1.5px solid var(--ink); border-ra
 .segment-index { display: grid; place-items: start center; padding-top: 16px; border-right: 1px solid var(--rule); color: var(--ink-soft); font-weight: 900; }
 .segment-main { min-width: 0; padding: 12px; }
 .segment-main label { display: block; }
-.segment-name { min-height: 38px; border: 0; border-bottom: 1px dashed var(--rule); padding-left: 0; background: transparent; }
+.segment-name { min-height: 44px; border: 0; border-bottom: 1px dashed var(--rule); padding-left: 0; background: transparent; }
 .mode-switch { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 8px; }
 .mode-button { min-height: 44px; border: 1px solid var(--ink-soft); background: transparent; color: var(--ink); font-size: 12px; font-weight: 800; }
 .mode-button[aria-pressed="true"] { background: var(--tape); color: white; border-color: var(--tape-dark); }
@@ -156,11 +161,13 @@ input { width: 100%; min-height: 44px; border: 1.5px solid var(--ink); border-ra
 .license-box > div { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
 .license-box > p:last-child { margin: 16px 0 0; font-size: 12px; }
 .buy-link { width: 100%; }
+.purchase-paused { margin: 0; padding: 10px; border-left: 4px solid var(--signal); background: #bd3e1c14; color: var(--signal-ink); font-size: 13px; font-weight: 800; }
 .unlocked-mark { margin: 0; color: var(--success); font-weight: 900; }
 
 footer { display: grid; grid-template-columns: 1fr 1fr auto; gap: 30px; padding: 34px max(20px, calc((100vw - 1440px) / 2)); background: var(--ink); color: #ded8c9; font-size: 12px; }
 footer p { max-width: 480px; margin: 0; }
-footer nav { display: flex; flex-wrap: wrap; align-content: start; gap: 18px; }
+footer nav { display: flex; flex-wrap: wrap; align-content: start; gap: 8px; }
+footer a, .license-box > p:last-child a, .site-header > a:not(.wordmark) { display: inline-flex; align-items: center; min-width: 44px; min-height: 44px; padding: 4px 8px; }
 footer a { color: white; }
 .update-toast { position: fixed; z-index: 50; right: 16px; bottom: 16px; display: flex; align-items: center; gap: 12px; max-width: 360px; padding: 14px; border: 2px solid white; background: var(--ink); color: white; box-shadow: 5px 5px 0 var(--signal); }
 .update-toast[hidden] { display: none; }
@@ -204,6 +211,8 @@ footer a { color: white; }
   .coordinate-form { grid-template-columns: 1fr 1fr; }
   .coordinate-form button { grid-column: 1 / -1; }
   .ledger-heading { align-items: flex-start; }
+  .ledger-actions { width: 100%; justify-content: stretch; }
+  .ledger-actions .button { flex: 1 1 140px; }
   .route-stats { grid-template-columns: repeat(2, 1fr); }
   .route-stats div:nth-child(2) { border-right: 0; }
   .action-deck { align-items: stretch; flex-direction: column; padding: 22px 16px; }

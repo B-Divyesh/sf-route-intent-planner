@@ -39,8 +39,18 @@ test('has no serious or critical accessibility violations', async ({ page }) => 
   expect(results.violations.filter((item) => ['serious', 'critical'].includes(item.impact || ''))).toEqual([]);
 });
 
+test('makes no automatic off-origin request and does not advertise an unregistered checkout', async ({ page }) => {
+  const requests: string[] = [];
+  page.on('request', (request) => requests.push(request.url()));
+  await page.goto('/');
+  await expect(page.getByText('Route Tape purchases are not open yet.')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Buy Route Tape — $9' })).toHaveCount(0);
+  expect(requests.every((url) => new URL(url).origin === 'http://127.0.0.1:4173')).toBe(true);
+});
+
 test('keeps the planner reachable by keyboard and avoids viewport overflow', async ({ page }) => {
   await page.goto('/');
+  await expect(page.locator('#route-name')).toBeVisible();
   await page.keyboard.press('Tab');
   const skip = page.getByRole('link', { name: 'Skip to route planner' });
   await expect(skip).toBeFocused();
@@ -100,4 +110,80 @@ test('rejects out-of-range GPX and malformed archives without poisoning a later 
   await page.reload();
   await expect(page.locator('h1')).toHaveCount(1);
   await expect(page.locator('.saved-list')).toHaveCount(0);
+});
+
+test('rejects absent, blank, and non-numeric GPX coordinates independently', async ({ page }) => {
+  await page.goto('/');
+  const fixtures = [
+    ['missing latitude', '<trkpt lon="-0.1"/><trkpt lat="51.51" lon="-0.09"/>'],
+    ['blank longitude', '<trkpt lat="51.5" lon=" "/><trkpt lat="51.51" lon="-0.09"/>'],
+    ['non-numeric latitude', '<trkpt lat="north" lon="-0.1"/><trkpt lat="51.51" lon="-0.09"/>'],
+    ['non-numeric longitude', '<trkpt lat="51.5" lon="west"/><trkpt lat="51.51" lon="-0.09"/>'],
+  ] as const;
+  for (const [name, points] of fixtures) {
+    await page.locator('#gpx-input').setInputFiles({
+      name: `${name}.gpx`,
+      mimeType: 'application/gpx+xml',
+      buffer: Buffer.from(`<gpx version="1.1"><trk><trkseg>${points}</trkseg></trk></gpx>`),
+    });
+    await expect(page.locator('#message')).toContainText(/missing a latitude or longitude|not numeric/);
+    await expect(page.locator('.route-stats strong').first()).toHaveText('0');
+  }
+});
+
+test('optimizes only explicit gaps and exports the road-shaped interior without moving locked points', async ({ page }) => {
+  let routerRequests = 0;
+  await page.route('https://routing.openstreetmap.de/**', async (route) => {
+    routerRequests += 1;
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+      code: 'Ok', routes: [{ geometry: { coordinates: [[-0.1, 51.5], [-0.095, 51.505], [-0.09, 51.51]] } }],
+    }) });
+  });
+  await page.goto('/');
+  await page.getByLabel('Latitude').fill('51.5000');
+  await page.getByLabel('Longitude').fill('-0.1000');
+  await page.getByLabel('Longitude').press('Enter');
+  await page.getByLabel('Latitude').fill('51.5100');
+  await page.getByLabel('Longitude').fill('-0.0900');
+  await page.getByLabel('Longitude').press('Enter');
+  await page.getByRole('button', { name: 'Open gap' }).click();
+  expect(routerRequests).toBe(0);
+  await page.getByRole('button', { name: 'Optimize gaps' }).click();
+  await expect(page.getByText(/1 open gap optimized. Locked coordinates were not changed/)).toBeVisible();
+  expect(routerRequests).toBe(1);
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export GPX' }).click();
+  const gpx = await (await download).createReadStream();
+  let text = '';
+  for await (const chunk of gpx!) text += chunk.toString();
+  expect(text).toContain('lat="51.500000" lon="-0.100000"');
+  expect(text).toContain('lat="51.505000" lon="-0.095000"');
+  expect(text).toContain('lat="51.510000" lon="-0.090000"');
+});
+
+test('shows visible keyboard focus on file controls and keeps mobile targets at 44px', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('sb_license:route-intent-planner', 'test-license');
+    localStorage.setItem('sb_license:route-intent-planner:verdict', JSON.stringify({ valid: true, checkedAt: Date.now() }));
+  });
+  await page.goto('/');
+  for (const selector of ['#gpx-input', '#backup-input']) {
+    await page.locator(selector).focus();
+    const details = await page.locator(selector).evaluate((input) => {
+      const label = input.closest('label')!;
+      const style = getComputedStyle(label);
+      const rect = label.getBoundingClientRect();
+      return { outlineWidth: style.outlineWidth, height: rect.height };
+    });
+    expect(details.outlineWidth).toBe('3px');
+    expect(details.height).toBeGreaterThanOrEqual(44);
+  }
+  await page.getByRole('button', { name: 'Load sample' }).click();
+  for (const selector of ['.segment-name', 'footer a', '.license-box a:not(.button)']) {
+    const boxes = await page.locator(selector).evaluateAll((elements) => elements.map((element) => {
+      const rect = element.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
+    }));
+    expect(boxes.every((box) => box.width >= 44 && box.height >= 44)).toBe(true);
+  }
 });

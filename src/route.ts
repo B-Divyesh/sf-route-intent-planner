@@ -1,4 +1,4 @@
-import type { AnalysisItem, RouteDraft, RoutePoint, RouteSegment, SegmentMode } from './types';
+import type { AnalysisItem, RouteDraft, RoutePoint, RouteSegment, RoutedPoint, SegmentMode } from './types';
 
 const id = () => crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
 
@@ -34,9 +34,45 @@ export function haversineKm(a: Pick<RoutePoint, 'lat' | 'lon'>, b: Pick<RoutePoi
   return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
+export function segmentCoordinates(segment: RouteSegment, from: RoutePoint, to: RoutePoint): RoutedPoint[] {
+  return [from, ...(segment.mode === 'gap' ? segment.routedPoints || [] : []), to];
+}
+
+export function segmentDistanceKm(segment: RouteSegment, from: RoutePoint, to: RoutePoint): number {
+  const coordinates = segmentCoordinates(segment, from, to);
+  return coordinates.slice(1).reduce((total, point, index) => total + haversineKm(coordinates[index], point), 0);
+}
+
+/** Flatten a draft for GPX while keeping every authored point exact. */
+export function exportCoordinates(draft: RouteDraft): RoutedPoint[] {
+  if (!draft.points.length) return [];
+  const byId = new Map(draft.points.map((point) => [point.id, point]));
+  return draft.segments.reduce<RoutedPoint[]>((coordinates, segment) => {
+    const from = byId.get(segment.fromId)!;
+    const to = byId.get(segment.toId)!;
+    if (!coordinates.length) coordinates.push(from);
+    if (segment.mode === 'gap') coordinates.push(...(segment.routedPoints || []));
+    coordinates.push(to);
+    return coordinates;
+  }, draft.segments.length ? [] : [draft.points[0]]);
+}
+
 /** WGS84 geographic coordinates accepted by GPX and the drafting sheet. */
 export function isWgs84Coordinate(lat: number, lon: number): boolean {
   return Number.isFinite(lat) && Number.isFinite(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
+}
+
+/** Validate raw GPX attributes before Number(null) can turn an omission into 0. */
+export function parseGpxCoordinateAttributes(latValue: string | null, lonValue: string | null, pointNumber: number): RoutedPoint {
+  if (latValue === null || lonValue === null || !latValue.trim() || !lonValue.trim()) {
+    throw new Error(`GPX point ${pointNumber} is missing a latitude or longitude. Add both WGS84 coordinates and try again.`);
+  }
+  const lat = Number(latValue);
+  const lon = Number(lonValue);
+  if (!isWgs84Coordinate(lat, lon)) {
+    throw new Error('One or more GPX points are outside WGS84 bounds or are not numeric. Latitude must be between -90 and 90; longitude must be between -180 and 180.');
+  }
+  return { lat, lon };
 }
 
 export function analyze(draft: RouteDraft): AnalysisItem[] {
@@ -44,12 +80,13 @@ export function analyze(draft: RouteDraft): AnalysisItem[] {
   return draft.segments.map((segment) => {
     const from = byId.get(segment.fromId)!;
     const to = byId.get(segment.toId)!;
-    const distanceKm = haversineKm(from, to);
+    const distanceKm = segmentDistanceKm(segment, from, to);
     if (segment.mode === 'flagged') {
       return { segmentId: segment.id, severity: 'review', reason: 'Marked off-intent — inspect before export.', distanceKm };
     }
     if (segment.mode === 'gap') {
-      return { segmentId: segment.id, severity: 'review', reason: 'Open gap — straight advisory connector only.', distanceKm };
+      const routed = (segment.routedPoints?.length || 0) > 0;
+      return { segmentId: segment.id, severity: 'review', reason: routed ? 'Open gap — optimized on the OpenStreetMap bicycle network; inspect access before export.' : 'Open gap — choose Optimize gaps to request an OpenStreetMap bicycle route.', distanceKm };
     }
     if (distanceKm > 15) {
       return { segmentId: segment.id, severity: 'review', reason: 'Long locked jump — confirm no trace points are missing.', distanceKm };
@@ -64,13 +101,12 @@ export function parseGpx(xml: string): RouteDraft {
   const nodes = [...document.querySelectorAll('trkpt, rtept')];
   if (nodes.length < 2) throw new Error('The GPX needs at least two track or route points.');
   if (nodes.length > 2000) throw new Error(`This GPX has ${nodes.length.toLocaleString()} points. This version preserves up to 2,000 exactly; simplify the track before importing.`);
-  const raw = nodes.map((node) => ({
-    lat: Number(node.getAttribute('lat')),
-    lon: Number(node.getAttribute('lon')),
-    elevation: node.querySelector('ele') ? Number(node.querySelector('ele')!.textContent) : undefined,
-  }));
+  const raw = nodes.map((node, index) => {
+    const coordinate = parseGpxCoordinateAttributes(node.getAttribute('lat'), node.getAttribute('lon'), index + 1);
+    return { ...coordinate, elevation: node.querySelector('ele') ? Number(node.querySelector('ele')!.textContent) : undefined };
+  });
   if (raw.some((point) => !isWgs84Coordinate(point.lat, point.lon))) {
-    throw new Error('One or more GPX points are outside WGS84 bounds. Latitude must be between -90 and 90; longitude must be between -180 and 180.');
+    throw new Error('One or more GPX points are outside WGS84 bounds or are not numeric. Latitude must be between -90 and 90; longitude must be between -180 and 180.');
   }
   if (raw.some((point) => point.elevation !== undefined && !Number.isFinite(point.elevation))) {
     throw new Error('One or more GPX elevation values are invalid. Remove or correct the affected <ele> value and try again.');
@@ -83,7 +119,7 @@ export function parseGpx(xml: string): RouteDraft {
 const escapeXml = (value: string) => value.replace(/[<>&'\"]/g, (char) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' })[char]!);
 
 export function toGpx(draft: RouteDraft): string {
-  const points = draft.points.map((point) => `      <trkpt lat="${point.lat.toFixed(6)}" lon="${point.lon.toFixed(6)}">${point.elevation == null ? '' : `<ele>${point.elevation}</ele>`}</trkpt>`).join('\n');
+  const points = exportCoordinates(draft).map((point) => `      <trkpt lat="${point.lat.toFixed(6)}" lon="${point.lon.toFixed(6)}">${'elevation' in point && point.elevation == null ? '' : 'elevation' in point ? `<ele>${point.elevation}</ele>` : ''}</trkpt>`).join('\n');
   const notes = draft.segments.map((segment, index) => `${index + 1}:${segment.mode}${segment.name ? `:${segment.name}` : ''}`).join(' | ');
   return `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Route Intent Planner" xmlns="http://www.topografix.com/GPX/1/1">\n  <metadata><name>${escapeXml(draft.name)}</name><desc>${escapeXml(`Intent ledger — ${notes}`)}</desc></metadata>\n  <trk><name>${escapeXml(draft.name)}</name><trkseg>\n${points}\n  </trkseg></trk>\n</gpx>\n`;
 }
