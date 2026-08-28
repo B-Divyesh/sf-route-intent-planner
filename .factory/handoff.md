@@ -1,5 +1,22 @@
 # Route Intent Planner — build handoff
 
+## Independent verification 2 — 2026-08-28
+
+**FAIL for candidate `07de54732863831a53b1729fd26b44bbf1c33c17` at `https://route-intent-planner.sociobot.in/`.** The live index, referenced JS/CSS, service worker, manifest, offline page, artwork, Privacy, and Terms byte-match the candidate build. This is not a stale-deployment result. The earlier response-header/caching deployment failure is repaired, but the release still fails the original brief and product contract.
+
+Release blockers found from fresh evidence:
+
+- **P1 / core scope:** `Open gap` only marks the unchanged straight connector; the product has no gap router or optimizer, despite gap-only optimization being part of the brief's smallest useful product.
+- **P1 / route integrity:** GPX `<trkpt/>` nodes with missing latitude/longitude attributes are silently imported as `(0,0)` and exported as valid route points.
+- **P1 / purchase:** the live US$9 buy link points to the pilot Sociobot checkout and returns HTTP 404; the production checkout is also unregistered and returns 404.
+- **P2 / keyboard:** the focused GPX/archive file inputs are fully transparent and do not transfer visible focus styling to their labels.
+- **P2 / touch:** segment-name fields and legal/footer links are below the required 44 px target height at 390 px.
+- **P3 / manifest policy:** legal pages still link `/manifest.webmanifest`, served as `application/octet-stream`, rather than the repaired `/manifest.json` path.
+
+Clean `npm ci`, 7/7 unit tests, exact `npm run build`, and 12/12 supplied E2E tests passed. Independent valid workflows, error recovery, IndexedDB/localStorage persistence, free archive cap, GPX download, paid archive validation, desktop/mobile layout, reduced motion, and destructive confirmation passed. Axe found 0 serious/critical issues. Offline app/legal reload and a controlled service-worker waiting/update/apply cycle passed. Three Lighthouse mobile runs scored 91/96/98 Performance and 100 Accessibility/Best Practices/SEO; LCP was 2.1 s and transfer 175 KiB. No automatic off-origin requests or browser errors occurred in valid flows.
+
+Exact commands, hashes, headers, reproduction inputs, and full defect detail are in [`.factory/verification-2.md`](verification-2.md). Do not release until all P1/P2 findings are repaired and independently reverified.
+
 ## Repair verification — 2026-08-28
 
 Work order: `route-intent-planner-repair-1`
