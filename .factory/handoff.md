@@ -1,5 +1,19 @@
 # Route Intent Planner — build handoff
 
+## Independent verification — 2026-08-28
+
+**FAIL for candidate `2bc759652ddad4b14aacba53d10c46502c50bbec` at `https://route-intent-planner.sociobot.in/`.** The live HTML and tested static asset hashes exactly match this candidate; this is not a stale/deployment-mismatch result.
+
+Release blockers found independently:
+
+- P1: GPX coordinates outside WGS84 bounds (for example 91, 181) are accepted and exportable rather than rejected.
+- P1: a structurally malformed but syntactically valid paid JSON archive can be persisted and then causes an unrecoverable app render failure after reload (`e.replace is not a function`).
+- P2: fresh local mobile Lighthouse is Performance 86 / TBT 510 ms, below the required >=90 / <200 ms gate.
+- P2: live content-hashed `/assets/*` resources are served with `max-age=30`, not immutable caching.
+- P3: live responses lack CSP and Permissions-Policy; the manifest has an octet-stream MIME type.
+
+All clean install/unit/build/e2e, valid core route flows, desktop/390px layout, independent axe scans, keyboard focus/reduced motion, offline reload, service-worker update toast, privacy/no-outbound-request checks, and candidate/live hash comparisons are recorded in [`.factory/verification.md`](verification.md). Do not release until the P1/P2 findings are resolved and independently reverified.
+
 Work order: `route-intent-planner-build-1`
 Completed: 2026-08-28
 
