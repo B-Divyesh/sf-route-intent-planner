@@ -46,7 +46,7 @@ The billing URL uses the product slug, never a provider product ID. See [`privac
 
 ## Deploy
 
-Serve `dist/` as a static site with clean directory-index routes and HTTPS. The generated `dist/_headers` is the static-host header policy: it gives content-hashed `/assets/*` a one-year immutable cache, keeps `sw.js` and the manifest revalidating, serves the manifest as `application/manifest+json`, and adds CSP plus a locked-down Permissions-Policy. Use a static host that honours the standard `_headers` file (the factory static deployment does).
+Serve `dist/` as a static site with clean directory-index routes and HTTPS. `dist/staticwebapp.config.json` is the factory Azure Static Web Apps policy; it gives content-hashed `/assets/*` a one-year immutable cache, keeps `sw.js` and the manifest revalidating, serves the manifest as `application/manifest+json`, and adds CSP plus a locked-down Permissions-Policy. `dist/_headers` carries the equivalent policy for portable static hosts.
 
 ## License
 

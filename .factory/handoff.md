@@ -11,8 +11,8 @@ Repair implementation: `b4cab69d2284186d1057872aa7353c7a48bf8fc3`
 - **P1 / invalid GPX:** GPX import now accepts only finite WGS84 coordinates: latitude `[-90, 90]` and longitude `[-180, 180]`. Invalid input is rejected before a draft is made, with a correction message. Direct coordinate entry uses the same boundary check.
 - **P1 / corrupt paid archive:** backup input requires a version-1 archive and strictly validates route IDs, names, timestamps, points, elevations, segment modes, unique IDs, and consecutive segment topology before opening an IndexedDB write transaction. All routes are written in one transaction, so malformed input has no partial effect. The reader also removes malformed legacy records from the prior candidate while retaining valid saved routes, and invalid current-draft localStorage is reset safely.
 - **P2 / mobile performance:** the final fresh local Lighthouse mobile run is **99 Performance**, **100 Accessibility**, **100 Best Practices**, **100 SEO**; LCP **2,023 ms**, TBT **0 ms**, transfer **175 KiB**. This clears the required >=90 / <200 ms gate.
-- **P2 / caching:** `public/_headers` ships to `dist/_headers` and gives content-hashed `/assets/*` `public, max-age=31536000, immutable`; `sw.js` is no-store and the manifest revalidates.
-- **P3 / response hardening:** the same static-host policy supplies CSP, Permissions-Policy, `X-Content-Type-Options`, `X-Frame-Options`, and `Referrer-Policy`, and declares `manifest.webmanifest` as `application/manifest+json; charset=utf-8`.
+- **P2 / caching:** `public/staticwebapp.config.json` ships to `dist/` for Azure Static Web Apps and gives content-hashed `/assets/*` `public, max-age=31536000, immutable`; `sw.js` is no-store and the manifest revalidates. `public/_headers` carries the same policy for portable static hosts.
+- **P3 / response hardening:** the Azure/static-host policy supplies CSP, Permissions-Policy, `X-Content-Type-Options`, `X-Frame-Options`, and `Referrer-Policy`, and declares `manifest.webmanifest` as `application/manifest+json; charset=utf-8`.
 - The service-worker cache is advanced from `v3` to `v4`. A controlled local replacement-worker check confirmed `UPDATE_TOAST_VISIBLE` after the new worker reached `waiting`.
 
 ### Exact regression coverage
@@ -35,7 +35,7 @@ npm run test:e2e       # passed; 12/12 Chromium checks across desktop + 390px mo
 
 ### Deployment notes
 
-The artifact remains a static Vite PWA with `dist/index.html` at its root. Deploy `dist/` with the factory static deployment, which honours `_headers`; do not use a plain file server for the final response-policy checks because it will not apply that deploy configuration. After publish, verify the live asset cache/header policy and candidate/live hashes before marking the release independently verified.
+The artifact remains a static Vite PWA with `dist/index.html` at its root. Deploy `dist/` with the factory Azure Static Web Apps deployment, which honours `staticwebapp.config.json`; do not use a plain file server for the final response-policy checks because it will not apply that deploy configuration. After publish, verify the live asset cache/header policy and candidate/live hashes before marking the release independently verified.
 
 ## Independent verification — 2026-08-28
 

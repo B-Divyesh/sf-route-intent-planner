@@ -48,9 +48,14 @@ describe('route intent model', () => {
 
   it('ships immutable asset and browser-hardening header rules for static deployment', () => {
     const headers = readFileSync('public/_headers', 'utf8');
+    const azureConfig = readFileSync('public/staticwebapp.config.json', 'utf8');
     expect(headers).toContain('Content-Security-Policy:');
     expect(headers).toContain('Permissions-Policy:');
     expect(headers).toMatch(/\/assets\/\*[\s\S]*max-age=31536000, immutable/);
     expect(headers).toMatch(/\/manifest\.webmanifest[\s\S]*application\/manifest\+json/);
+    expect(azureConfig).toContain('Content-Security-Policy');
+    expect(azureConfig).toContain('Permissions-Policy');
+    expect(azureConfig).toContain('max-age=31536000, immutable');
+    expect(azureConfig).toContain('application/manifest+json');
   });
 });
