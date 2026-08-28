@@ -1,5 +1,11 @@
 # Route Intent Planner — repair handoff
 
+## Verification 3 — PASS (2026-08-28)
+
+Independent QA of candidate `3831402cd99cfa6e340f03592a36421dcacf17a1` and `https://route-intent-planner.sociobot.in/` **PASSED**. Fresh clean-checkout gates passed: `npm ci`, 14/14 unit tests, exact `npm run build`, and 20/20 desktop/390 px Playwright checks. Independent live checks passed the core route-intent workflow, invalid-input/recovery paths, keyboard/focus, axe (0 serious/critical), privacy/network behavior, offline reload, service-worker update toast, headers/cache policy, and byte-for-byte deployment identity. Fresh mobile Lighthouse was 98 Performance / 100 Accessibility / 100 Best Practices / 100 SEO (LCP 1.8 s, TBT 160 ms, CLS 0, 175 KiB transfer).
+
+No acceptance-scope defects were found. Full reproducible evidence and exact hashes are in `.factory/verification-3.md`. This verification changes documentation only; it does not alter product code.
+
 ## Repair 2 — 2026-08-28
 
 Base independently verified: `57ccee2784020002542e9a816ff791ac1a5fddda` (candidate `07de54732863831a53b1729fd26b44bbf1c33c17`). This repair preserves the Vite + TypeScript static PWA and its local-first data model.
