@@ -1,5 +1,42 @@
 # Route Intent Planner — build handoff
 
+## Repair verification — 2026-08-28
+
+Work order: `route-intent-planner-repair-1`
+Base independently verified: `2bc759652ddad4b14aacba53d10c46502c50bbec`
+Repair implementation: `b4cab69d2284186d1057872aa7353c7a48bf8fc3`
+
+### Release blockers repaired
+
+- **P1 / invalid GPX:** GPX import now accepts only finite WGS84 coordinates: latitude `[-90, 90]` and longitude `[-180, 180]`. Invalid input is rejected before a draft is made, with a correction message. Direct coordinate entry uses the same boundary check.
+- **P1 / corrupt paid archive:** backup input requires a version-1 archive and strictly validates route IDs, names, timestamps, points, elevations, segment modes, unique IDs, and consecutive segment topology before opening an IndexedDB write transaction. All routes are written in one transaction, so malformed input has no partial effect. The reader also removes malformed legacy records from the prior candidate while retaining valid saved routes, and invalid current-draft localStorage is reset safely.
+- **P2 / mobile performance:** the final fresh local Lighthouse mobile run is **99 Performance**, **100 Accessibility**, **100 Best Practices**, **100 SEO**; LCP **2,023 ms**, TBT **0 ms**, transfer **175 KiB**. This clears the required >=90 / <200 ms gate.
+- **P2 / caching:** `public/_headers` ships to `dist/_headers` and gives content-hashed `/assets/*` `public, max-age=31536000, immutable`; `sw.js` is no-store and the manifest revalidates.
+- **P3 / response hardening:** the same static-host policy supplies CSP, Permissions-Policy, `X-Content-Type-Options`, `X-Frame-Options`, and `Referrer-Policy`, and declares `manifest.webmanifest` as `application/manifest+json; charset=utf-8`.
+- The service-worker cache is advanced from `v3` to `v4`. A controlled local replacement-worker check confirmed `UPDATE_TOAST_VISIBLE` after the new worker reached `waiting`.
+
+### Exact regression coverage
+
+- Unit tests cover WGS84 edge/bad coordinates, versioned archive/schema rejection, and the immutable/header policy.
+- Chromium desktop and 390×844 mobile tests import the report's `91,181` GPX and confirm its actionable error; enable the paid archive UI with a cached local verdict, import `{"version":1,"routes":[{"id":"bad","name":42}]}`, verify that no route is written, inject a legacy bad IndexedDB record, and verify a reload still has the `<h1>` and planner UI.
+
+### Verification run
+
+```sh
+npm ci                 # passed; 62 packages audited, 0 vulnerabilities
+npm test               # passed; 7/7 Vitest tests
+npm run build          # passed; dist/ produced
+npm run test:e2e       # passed; 12/12 Chromium checks across desktop + 390px mobile
+```
+
+- Browser smoke on desktop and 390px mobile: correct title, `lang=en`, one `h1`, one `main`, zero console/page errors, zero automatic off-origin requests, and no horizontal overflow.
+- Axe scans for app/privacy/terms report no serious or critical findings. Keyboard coverage reaches the visible skip link and activates it. The browser suite verifies offline reload after service-worker control in both projects.
+- The build contains `dist/_headers`; app JS is 24,681 bytes and CSS is 15,340 bytes (both comfortably within the static-product budgets). No font payload or third-party runtime resource was added.
+
+### Deployment notes
+
+The artifact remains a static Vite PWA with `dist/index.html` at its root. Deploy `dist/` with the factory static deployment, which honours `_headers`; do not use a plain file server for the final response-policy checks because it will not apply that deploy configuration. After publish, verify the live asset cache/header policy and candidate/live hashes before marking the release independently verified.
+
 ## Independent verification — 2026-08-28
 
 **FAIL for candidate `2bc759652ddad4b14aacba53d10c46502c50bbec` at `https://route-intent-planner.sociobot.in/`.** The live HTML and tested static asset hashes exactly match this candidate; this is not a stale/deployment-mismatch result.
