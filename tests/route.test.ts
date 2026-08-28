@@ -52,7 +52,7 @@ describe('route intent model', () => {
     expect(headers).toContain('Content-Security-Policy:');
     expect(headers).toContain('Permissions-Policy:');
     expect(headers).toMatch(/\/assets\/\*[\s\S]*max-age=31536000, immutable/);
-    expect(headers).toMatch(/\/manifest\.webmanifest[\s\S]*application\/manifest\+json/);
+    expect(headers).toMatch(/\/manifest\.json[\s\S]*application\/manifest\+json/);
     expect(azureConfig).toContain('Content-Security-Policy');
     expect(azureConfig).toContain('Permissions-Policy');
     expect(azureConfig).toContain('max-age=31536000, immutable');

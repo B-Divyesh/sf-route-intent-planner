@@ -24,7 +24,7 @@
       }
     },
     {
-      "route": "/manifest.webmanifest",
+      "route": "/manifest.json",
       "headers": {
         "Cache-Control": "no-cache",
         "Content-Type": "application/manifest+json; charset=utf-8"
