@@ -1,0 +1,11 @@
+{
+  "slug": "route-intent-planner",
+  "title": "Route Intent Planner",
+  "territory": "utilities",
+  "user": "Cyclists and ride leaders who know the roads or paths they intend to use and need a route planner that preserves those choices instead of silently redrawing them.",
+  "smallest_useful_product": "A GPX/web planner that accepts a rough trace or named mandatory segments, locks those corridors, optimizes only gaps, and flags off-intent sections.",
+  "success_measure": "At least 85% of routes made by ride leaders need no post-export correction to preserve their selected roads/paths.",
+  "artifact_class": "pwa-offline",
+  "monetization": "one-time",
+  "constraints": "Use OpenStreetMap-compatible data/licensing; clearly label routing as advisory; cache map data and respect tile-provider policy."
+}
