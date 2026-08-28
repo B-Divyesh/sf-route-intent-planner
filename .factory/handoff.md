@@ -36,3 +36,9 @@ Local privacy/network smoke confirms no automatic off-origin request on a fresh 
 ### Release status and next action
 
 The code, quality gates, PWA, accessibility, mobile targets, and response policy configuration are ready for static deployment. The deployed app honestly marks purchases unavailable rather than linking to a 404. When the factory enables/registers `route-intent-planner` in the Sociobot billing catalog and the production checkout reaches hosted checkout, deploy with `VITE_BILLING_ENABLED=true` and rerun a direct checkout smoke test plus live identity/header checks. No other known product-code gaps remain from verification 2.
+
+### Deployment evidence
+
+Static deployment completed at `https://route-intent-planner.sociobot.in/` from product commit `5e1765d`. Live desktop and 390×844 Chromium smoke found one `h1`, the paused-purchase notice, no buy link, no horizontal overflow, and zero console/page errors. `/opt/fleet/lib/verify-url.sh` passed against the live URL. Byte-for-byte SHA-256 comparisons passed for the live index, all referenced JS/CSS, service worker, linked manifest, offline page, and hero artwork.
+
+Live policy checks confirmed immutable hashed assets, `sw.js` no-store, CSP, Permissions-Policy, X-Frame-Options, and X-Content-Type-Options. `/manifest.json` is `application/json` with no-cache; the obsolete `/manifest.webmanifest` now returns 404 rather than navigation-fallback HTML. The external production checkout remains HTTP 404, which is why the deployed UI has no checkout link.
