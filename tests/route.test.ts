@@ -85,5 +85,6 @@ describe('route intent model', () => {
     expect(azureConfig).toContain('max-age=31536000, immutable');
     expect(azureConfig).toContain('application/manifest+json');
     expect(azureConfig).toContain('routing.openstreetmap.de');
+    expect(azureConfig).toContain('webmanifest');
   });
 });
