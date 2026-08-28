@@ -34,6 +34,11 @@ export function haversineKm(a: Pick<RoutePoint, 'lat' | 'lon'>, b: Pick<RoutePoi
   return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
+/** WGS84 geographic coordinates accepted by GPX and the drafting sheet. */
+export function isWgs84Coordinate(lat: number, lon: number): boolean {
+  return Number.isFinite(lat) && Number.isFinite(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
+}
+
 export function analyze(draft: RouteDraft): AnalysisItem[] {
   const byId = new Map(draft.points.map((point) => [point.id, point]));
   return draft.segments.map((segment) => {
@@ -64,8 +69,11 @@ export function parseGpx(xml: string): RouteDraft {
     lon: Number(node.getAttribute('lon')),
     elevation: node.querySelector('ele') ? Number(node.querySelector('ele')!.textContent) : undefined,
   }));
-  if (raw.some((point) => !Number.isFinite(point.lat) || !Number.isFinite(point.lon))) {
-    throw new Error('One or more GPX points have invalid coordinates.');
+  if (raw.some((point) => !isWgs84Coordinate(point.lat, point.lon))) {
+    throw new Error('One or more GPX points are outside WGS84 bounds. Latitude must be between -90 and 90; longitude must be between -180 and 180.');
+  }
+  if (raw.some((point) => point.elevation !== undefined && !Number.isFinite(point.elevation))) {
+    throw new Error('One or more GPX elevation values are invalid. Remove or correct the affected <ele> value and try again.');
   }
   let draft = emptyDraft(document.querySelector('trk > name, rte > name')?.textContent?.trim() || 'Imported route tape');
   for (const point of raw) draft = addPoint(draft, point);

@@ -1,8 +1,9 @@
 import './styles.css';
-import { addPoint, analyze, emptyDraft, parseGpx, sampleDraft, toGpx } from './route';
+import { addPoint, analyze, emptyDraft, isWgs84Coordinate, parseGpx, sampleDraft, toGpx } from './route';
 import { deleteRoute, importBackup, listRoutes, saveRoute } from './storage';
 import { cachedUnlock, captureLicense, checkoutUrl, storeLicense, verifyLicense } from './license';
 import type { RouteDraft, SegmentMode } from './types';
+import { isRouteDraft } from './validation';
 
 const CURRENT_KEY = 'route-intent-planner:current';
 const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -12,7 +13,7 @@ const clone = (draft: RouteDraft) => structuredClone(draft);
 function restoredDraft(): RouteDraft {
   try {
     const value = JSON.parse(localStorage.getItem(CURRENT_KEY) || 'null') as RouteDraft | null;
-    return value?.points && value?.segments ? value : emptyDraft();
+    return isRouteDraft(value) ? value : emptyDraft();
   } catch { return emptyDraft(); }
 }
 
@@ -210,7 +211,7 @@ function bindEvents(): void {
   document.querySelector('#coordinate-form')?.addEventListener('submit', (event) => {
     event.preventDefault(); const data = new FormData(event.currentTarget as HTMLFormElement);
     const lat = Number(data.get('lat')); const lon = Number(data.get('lon'));
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+    if (!isWgs84Coordinate(lat, lon)) { error = 'Use a WGS84 latitude from -90 to 90 and longitude from -180 to 180.'; render(); return; }
     commit(addPoint(draft, { lat, lon }), `Coordinate ${draft.points.length + 1} added and locked.`);
   });
   document.querySelector('#gpx-input')?.addEventListener('change', async (event) => {
@@ -241,8 +242,8 @@ function bindEvents(): void {
   document.querySelector('#backup')?.addEventListener('click', () => download('route-intent-archive.json', JSON.stringify({ version: 1, routes: savedRoutes }, null, 2), 'application/json'));
   document.querySelector('#backup-input')?.addEventListener('change', async (event) => {
     const file = (event.target as HTMLInputElement).files?.[0]; if (!file) return;
-    try { const data = JSON.parse(await file.text()) as { routes?: RouteDraft[] }; if (!Array.isArray(data.routes)) throw new Error(); await importBackup(data.routes); savedRoutes = await listRoutes(); status = `${data.routes.length} route tapes imported.`; render(); }
-    catch { error = 'That archive is not a Route Intent Planner JSON backup.'; render(); }
+    try { const routes = await importBackup(JSON.parse(await file.text())); savedRoutes = await listRoutes(); status = `${routes.length} route tapes imported.`; render(); }
+    catch (reason) { error = reason instanceof Error ? reason.message : 'That archive is not a Route Intent Planner JSON backup.'; render(); }
   });
   document.querySelector('#restore-license')?.addEventListener('click', async () => {
     const value = (document.querySelector('#license-token') as HTMLInputElement).value.trim(); if (!value) { error = 'Paste your license token first.'; render(); return; }

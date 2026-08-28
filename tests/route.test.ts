@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { addPoint, analyze, emptyDraft, haversineKm, sampleDraft, toGpx } from '../src/route';
+import { readFileSync } from 'node:fs';
+import { addPoint, analyze, emptyDraft, haversineKm, isWgs84Coordinate, sampleDraft, toGpx } from '../src/route';
+import { parseBackup } from '../src/validation';
 
 describe('route intent model', () => {
   it('locks newly-authored corridors by default', () => {
@@ -30,5 +32,25 @@ describe('route intent model', () => {
     const distance = haversineKm({ lat: 51.5, lon: -0.1 }, { lat: 51.5, lon: -0.09 });
     expect(distance).toBeGreaterThan(0.68);
     expect(distance).toBeLessThan(0.71);
+  });
+
+  it('treats only finite WGS84 coordinate pairs as valid', () => {
+    expect(isWgs84Coordinate(90, 180)).toBe(true);
+    expect(isWgs84Coordinate(-90, -180)).toBe(true);
+    expect(isWgs84Coordinate(91, 181)).toBe(false);
+    expect(isWgs84Coordinate(Number.NaN, 0)).toBe(false);
+  });
+
+  it('rejects malformed paid archives before any route can be persisted', () => {
+    expect(() => parseBackup({ version: 1, routes: [{ id: 'bad', name: 42 }] })).toThrow(/invalid route/);
+    expect(() => parseBackup({ routes: [] })).toThrow(/version 1/);
+  });
+
+  it('ships immutable asset and browser-hardening header rules for static deployment', () => {
+    const headers = readFileSync('public/_headers', 'utf8');
+    expect(headers).toContain('Content-Security-Policy:');
+    expect(headers).toContain('Permissions-Policy:');
+    expect(headers).toMatch(/\/assets\/\*[\s\S]*max-age=31536000, immutable/);
+    expect(headers).toMatch(/\/manifest\.webmanifest[\s\S]*application\/manifest\+json/);
   });
 });

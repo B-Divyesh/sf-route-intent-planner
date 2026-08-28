@@ -39,6 +39,16 @@ test('has no serious or critical accessibility violations', async ({ page }) => 
   expect(results.violations.filter((item) => ['serious', 'critical'].includes(item.impact || ''))).toEqual([]);
 });
 
+test('keeps the planner reachable by keyboard and avoids viewport overflow', async ({ page }) => {
+  await page.goto('/');
+  await page.keyboard.press('Tab');
+  const skip = page.getByRole('link', { name: 'Skip to route planner' });
+  await expect(skip).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/#main$/);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+});
+
 test('works offline after the app shell is installed', async ({ page, context }) => {
   await page.goto('/');
   await page.evaluate(async () => {
@@ -50,4 +60,44 @@ test('works offline after the app shell is installed', async ({ page, context })
   await expect(page.getByRole('heading', { name: /Keep the line/ })).toBeVisible();
   await expect(page.getByText('Offline — local tools ready')).toBeVisible();
   await context.setOffline(false);
+});
+
+test('rejects out-of-range GPX and malformed archives without poisoning a later reload', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('sb_license:route-intent-planner', 'test-license');
+    localStorage.setItem('sb_license:route-intent-planner:verdict', JSON.stringify({ valid: true, checkedAt: Date.now() }));
+  });
+  await page.goto('/');
+  await page.locator('#gpx-input').setInputFiles({
+    name: 'out-of-range.gpx',
+    mimeType: 'application/gpx+xml',
+    buffer: Buffer.from('<?xml version="1.0"?><gpx><trk><trkseg><trkpt lat="91" lon="181"/><trkpt lat="92" lon="182"/></trkseg></trk></gpx>'),
+  });
+  await expect(page.getByText(/outside WGS84 bounds/)).toBeVisible();
+
+  await page.locator('#backup-input').setInputFiles({
+    name: 'malformed-archive.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from('{"version":1,"routes":[{"id":"bad","name":42}]}'),
+  });
+  await expect(page.getByText(/contains an invalid route/)).toBeVisible();
+  await expect(page.locator('.saved-list')).toHaveCount(0);
+
+  // Simulate the record written by the previously released candidate. The
+  // repaired reader must remove it and still render a recoverable planner.
+  await page.evaluate(async () => {
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('route-intent-planner');
+      request.onsuccess = () => {
+        const transaction = request.result.transaction('routes', 'readwrite');
+        transaction.objectStore('routes').put({ id: 'bad', name: 42 });
+        transaction.oncomplete = () => { request.result.close(); resolve(); };
+        transaction.onerror = () => reject(transaction.error);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  });
+  await page.reload();
+  await expect(page.locator('h1')).toHaveCount(1);
+  await expect(page.locator('.saved-list')).toHaveCount(0);
 });

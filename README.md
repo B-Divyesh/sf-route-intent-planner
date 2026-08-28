@@ -46,7 +46,7 @@ The billing URL uses the product slug, never a provider product ID. See [`privac
 
 ## Deploy
 
-Serve `dist/` as a static site with clean directory-index routes and HTTPS. Do not deploy infrastructure from this repository. Configure immutable caching for hashed `/assets/*`; serve `sw.js` and `manifest.webmanifest` with short cache lifetimes so updates propagate.
+Serve `dist/` as a static site with clean directory-index routes and HTTPS. The generated `dist/_headers` is the static-host header policy: it gives content-hashed `/assets/*` a one-year immutable cache, keeps `sw.js` and the manifest revalidating, serves the manifest as `application/manifest+json`, and adds CSP plus a locked-down Permissions-Policy. Use a static host that honours the standard `_headers` file (the factory static deployment does).
 
 ## License
 
