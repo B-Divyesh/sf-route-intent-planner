@@ -1,0 +1,8 @@
+{
+  "generated_at": "2026-09-06",
+  "tool": "/opt/fleet/lib/gen-image.sh",
+  "deployment": "factory Azure image deployment",
+  "source_size": "1536x1024",
+  "output": "public/art/route-intent-social.webp",
+  "prompt": "Use case: ads-marketing. Asset type: 1200 by 630 social preview for Route Intent Planner. Primary request: a wide top-down editorial illustration of one translucent cassette on recycled route-sheet paper, with oxidised teal magnetic tape becoming a deliberate bicycle route through several punched waypoint markers. Scene: simple abstract street grid and one visibly open dashed gap, no real place. Style: cassette-era cycling zine, risograph print, torn photocopy edges, halftone ink, grease-pencil check marks, flat scanned paper, no photographic depth. Composition: wide landscape, route and cassette centered, generous breathing room, readable at thumbnail size. Palette: warm oat paper, carbon black, oxidised teal, safety orange, restrained cobalt. Constraints: original image, no people, no bicycles, no brands, no logos, no legible text, no letters, no watermark, no UI mockup, no gradient, no glossy 3D."
+}

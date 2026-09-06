@@ -1,20 +1,22 @@
 import type { RouteDraft } from './types';
 import { isRouteDraft, parseBackup } from './validation';
 
-const DB_NAME = 'route-intent-planner';
+export type StorageScope = 'real' | 'demo';
+
+const databaseName = (scope: StorageScope) => scope === 'demo' ? 'demo:route-intent-planner' : 'route-intent-planner';
 const STORE = 'routes';
 
-function openDb(): Promise<IDBDatabase> {
+function openDb(scope: StorageScope): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1);
+    const request = indexedDB.open(databaseName(scope), 1);
     request.onupgradeneeded = () => request.result.createObjectStore(STORE, { keyPath: 'id' });
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
 }
 
-export async function saveRoute(route: RouteDraft): Promise<void> {
-  const db = await openDb();
+export async function saveRoute(route: RouteDraft, scope: StorageScope = 'real'): Promise<void> {
+  const db = await openDb(scope);
   await new Promise<void>((resolve, reject) => {
     const transaction = db.transaction(STORE, 'readwrite');
     transaction.objectStore(STORE).put(route);
@@ -24,8 +26,8 @@ export async function saveRoute(route: RouteDraft): Promise<void> {
   db.close();
 }
 
-export async function listRoutes(): Promise<RouteDraft[]> {
-  const db = await openDb();
+export async function listRoutes(scope: StorageScope = 'real'): Promise<RouteDraft[]> {
+  const db = await openDb(scope);
   const routes = await new Promise<RouteDraft[]>((resolve, reject) => {
     const transaction = db.transaction(STORE, 'readwrite');
     const store = transaction.objectStore(STORE);
@@ -48,8 +50,8 @@ export async function listRoutes(): Promise<RouteDraft[]> {
   return routes.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
-export async function deleteRoute(id: string): Promise<void> {
-  const db = await openDb();
+export async function deleteRoute(id: string, scope: StorageScope = 'real'): Promise<void> {
+  const db = await openDb(scope);
   await new Promise<void>((resolve, reject) => {
     const transaction = db.transaction(STORE, 'readwrite');
     transaction.objectStore(STORE).delete(id);
@@ -59,11 +61,11 @@ export async function deleteRoute(id: string): Promise<void> {
   db.close();
 }
 
-export async function importBackup(archive: unknown): Promise<RouteDraft[]> {
+export async function importBackup(archive: unknown, scope: StorageScope = 'real'): Promise<RouteDraft[]> {
   // Validate every route before opening a write transaction. A malformed
   // archive must have no partial effect, including when a later route is bad.
   const routes = parseBackup(archive);
-  const db = await openDb();
+  const db = await openDb(scope);
   await new Promise<void>((resolve, reject) => {
     const transaction = db.transaction(STORE, 'readwrite');
     const store = transaction.objectStore(STORE);
@@ -74,4 +76,13 @@ export async function importBackup(archive: unknown): Promise<RouteDraft[]> {
   });
   db.close();
   return routes;
+}
+
+export function clearRoutes(scope: StorageScope): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(databaseName(scope));
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+    request.onblocked = () => reject(new Error('Close other demo tabs before resetting the sample.'));
+  });
 }

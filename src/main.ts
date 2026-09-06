@@ -1,12 +1,17 @@
 import './styles.css';
 import { addPoint, analyze, emptyDraft, isWgs84Coordinate, parseGpx, sampleDraft, segmentCoordinates, toGpx } from './route';
 import { routeOpenGap } from './router';
-import { deleteRoute, importBackup, listRoutes, saveRoute } from './storage';
-import { billingEnabled, cachedUnlock, captureLicense, checkoutUrl, storeLicense, verifyLicense } from './license';
+import { clearRoutes, deleteRoute, importBackup, listRoutes, saveRoute, type StorageScope } from './storage';
+import { billingEnabled, cachedUnlock, captureLicense, checkoutUrl, clearDemoLicense, storeLicense, verifyLicense } from './license';
 import type { RouteDraft, SegmentMode } from './types';
 import { isRouteDraft } from './validation';
 
-const CURRENT_KEY = 'route-intent-planner:current';
+const DEMO_KEY_PREFIX = 'demo:';
+const routeUrl = new URL(location.href);
+const demoMode = routeUrl.pathname.replace(/\/$/, '') === '/demo' || routeUrl.searchParams.get('demo') === '1';
+const storageScope: StorageScope = demoMode ? 'demo' : 'real';
+const CURRENT_KEY = `${demoMode ? DEMO_KEY_PREFIX : ''}route-intent-planner:current`;
+const requestedNewDraft = !demoMode && routeUrl.searchParams.get('new') === '1';
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]!);
 const clone = (draft: RouteDraft) => structuredClone(draft);
@@ -14,26 +19,42 @@ const clone = (draft: RouteDraft) => structuredClone(draft);
 function restoredDraft(): RouteDraft {
   try {
     const value = JSON.parse(localStorage.getItem(CURRENT_KEY) || 'null') as RouteDraft | null;
-    return isRouteDraft(value) ? value : emptyDraft();
-  } catch { return emptyDraft(); }
+    return isRouteDraft(value) ? value : demoMode ? sampleDraft() : emptyDraft();
+  } catch { return demoMode ? sampleDraft() : emptyDraft(); }
 }
 
-let draft = restoredDraft();
+let draft = requestedNewDraft ? emptyDraft() : restoredDraft();
+if (requestedNewDraft) {
+  localStorage.setItem(CURRENT_KEY, JSON.stringify(draft));
+  const cleanUrl = new URL(location.href);
+  cleanUrl.searchParams.delete('new');
+  history.replaceState({}, '', `${cleanUrl.pathname}${cleanUrl.search}${cleanUrl.hash}`);
+}
 let undoStack: RouteDraft[] = [];
 let redoStack: RouteDraft[] = [];
 let savedRoutes: RouteDraft[] = [];
-let token = captureLicense();
-let unlocked = cachedUnlock(token);
-let status = draft.points.length ? 'Draft restored from this device.' : 'Start by tapping the drafting sheet, importing GPX, or loading the sample.';
+let token = captureLicense(demoMode);
+let unlocked = cachedUnlock(token, demoMode);
+let status = requestedNewDraft
+  ? 'New blank route ready.'
+  : demoMode
+    ? 'Sample ready. Inspect the open river-crossing gap or export the route.'
+    : draft.points.length
+      ? 'Draft restored from this device.'
+      : 'Add a point on the drafting sheet or import a GPX file.';
 let error = '';
 let analysisVisible = false;
+
+function persistDraft(): void {
+  localStorage.setItem(CURRENT_KEY, JSON.stringify(draft));
+}
 
 function commit(next: RouteDraft, message: string): void {
   undoStack.push(clone(draft));
   if (undoStack.length > 40) undoStack.shift();
   redoStack = [];
   draft = next;
-  localStorage.setItem(CURRENT_KEY, JSON.stringify(draft));
+  persistDraft();
   status = message;
   error = '';
   render();
@@ -80,7 +101,7 @@ function mapMarkup(): string {
 }
 
 function segmentMarkup(): string {
-  if (!draft.segments.length) return `<li class="empty-ledger"><span class="stamp">NO TAPE YET</span><p>Add at least two points. Each connection becomes an independently locked or open segment.</p></li>`;
+  if (!draft.segments.length) return `<li class="empty-ledger"><strong>No segments yet</strong><p>Add at least two points. Each connection can stay locked, become an open gap, or be flagged.</p></li>`;
   const results = new Map(analyze(draft).map((item) => [item.segmentId, item]));
   return draft.segments.map((segment, index) => {
     const result = results.get(segment.id)!;
@@ -111,32 +132,40 @@ function summaryMarkup(): string {
 }
 
 function savedMarkup(): string {
-  if (!savedRoutes.length) return '<p class="muted">No saved route tapes yet. Your current draft still survives refreshes.</p>';
+  if (!savedRoutes.length) return '<p class="muted">No saved routes yet. Save the current route to open it again later.</p>';
   return `<ul class="saved-list">${savedRoutes.map((route) => `<li><button class="saved-open" data-open="${route.id}"><strong>${escapeHtml(route.name)}</strong><span>${route.points.length} points · ${new Date(route.updatedAt).toLocaleDateString()}</span></button><button class="icon-button saved-delete" data-delete="${route.id}" aria-label="Delete ${escapeHtml(route.name)}">×</button></li>`).join('')}</ul>`;
 }
 
 function render(): void {
+  document.body.classList.toggle('demo-mode', demoMode);
+  document.title = demoMode ? 'Demo — Route Intent Planner' : 'Route Intent Planner — plan routes with locked roads';
   app.innerHTML = `
     <header class="site-header">
       <a class="wordmark" href="/" aria-label="Route Intent Planner home"><span>RIP</span><span>Route intent planner</span></a>
-      <div class="network-badge" aria-live="polite"><span class="network-dot"></span>${navigator.onLine ? 'Online' : 'Offline — local tools ready'}</div>
+      <div class="header-tools">
+        <nav class="site-nav" aria-label="Main navigation"><a href="/#planner-title">Planner</a><a href="/demo/">Demo</a><a href="/privacy/">Privacy</a></nav>
+        <div class="network-badge" aria-live="polite"><span class="network-dot"></span>${navigator.onLine ? 'Online' : 'Offline — local tools ready'}</div>
+      </div>
     </header>
+    ${demoMode ? `<div class="demo-banner" role="status"><strong>Demo — sample data, nothing is saved</strong><div><button id="reset-demo" class="text-button">Reset demo</button><button id="start-real" class="button button--dark">Start for real</button></div></div>` : ''}
+    <div class="route-announcer sr-only" aria-live="polite">${demoMode ? 'Demo route loaded' : 'Route planner loaded'}</div>
     <main id="main">
       <section class="hero" aria-labelledby="page-title">
         <div class="hero-copy">
-          <p class="eyebrow">A route tape, not a reroute machine</p>
-          <h1 id="page-title">Keep the line<br><em>you</em> chose.</h1>
-          <p class="lede">Pin a rough ride, lock the roads and paths that matter, and optimize only the gaps you open. Every deviation stays visible before GPX export.</p>
-          <div class="hero-notes"><span>Works offline</span><span>No map account</span><span>GPX stays yours</span></div>
+          <p class="eyebrow">Cycling route planner</p>
+          <h1 id="page-title">${demoMode ? 'Check a sample cycling route' : 'Plan cycling routes around your chosen roads'}</h1>
+          <p class="lede">${demoMode ? 'This nine-point London loop keeps the canal section fixed and marks one river-crossing gap for review.' : 'For cyclists and ride leaders who know their roads and need gaps filled without changing the route they chose.'}</p>
+          <div class="hero-actions">${demoMode ? '<a class="button button--signal" href="#planner-title">View the sample route</a><span>Review nine points, eight segments, and one open gap.</span>' : '<a class="button button--signal" href="/demo/">Try it with sample data</a><span>Loads a nine-point London canal loop in a separate demo.</span>'}</div>
+          <ul class="hero-notes"><li>Drafts stay in this browser</li><li>Offline after one connected visit</li><li>Optional archive: US$9 once when sales open</li></ul>
         </div>
         <figure class="hero-art">
           <img src="/art/route-tape-hero.webp" width="720" height="720" alt="Risograph collage of a cassette whose magnetic tape forms a deliberate route with waypoint markers" fetchpriority="high" />
-          <figcaption>Your line is the master tape.</figcaption>
+          <figcaption>Original generated route-planning artwork.</figcaption>
         </figure>
       </section>
 
       <section class="planner" aria-labelledby="planner-title">
-        <div class="section-kicker"><span>01</span><h2 id="planner-title">Draft the route tape</h2><p>Local draft</p></div>
+        <div class="section-kicker"><span>01</span><h2 id="planner-title">Build your route</h2><p>${demoMode ? 'Sample route' : 'Saved in this browser'}</p></div>
         <div class="project-strip">
           <label for="route-name">Route name</label>
           <input id="route-name" value="${escapeHtml(draft.name)}" maxlength="80" />
@@ -144,14 +173,13 @@ function render(): void {
         </div>
         <div class="tool-strip" aria-label="Route tools">
           <label class="button button--dark file-button" for="gpx-input">Import GPX<input id="gpx-input" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml" /></label>
-          <button id="sample" class="button">Load sample</button>
           <button id="undo" class="button button--quiet" ${undoStack.length ? '' : 'disabled'}>Undo</button>
           <button id="redo" class="button button--quiet" ${redoStack.length ? '' : 'disabled'}>Redo</button>
           <button id="remove-last" class="button button--quiet" ${draft.points.length ? '' : 'disabled'}>Remove last</button>
         </div>
         <div class="workspace">
           <div class="drafting-panel">
-            <div class="map-heading"><p><strong>Drafting sheet</strong><span>Tap anywhere to add a point</span></p><span class="map-scale">OSM-READY / WGS84</span></div>
+            <div class="map-heading"><p><strong>Route drawing</strong><span>Tap anywhere to add a point</span></p><span class="map-scale">WGS84 coordinates</span></div>
             <svg id="route-map" class="route-map" viewBox="0 0 720 480" role="img" aria-label="Schematic route drafting sheet. Use the coordinate form below for a keyboard-accessible way to add points.">
               <defs><pattern id="minor-grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M 24 0 L 0 0 0 24" /></pattern><pattern id="major-grid" width="120" height="120" patternUnits="userSpaceOnUse"><rect width="120" height="120" fill="url(#minor-grid)"/><path d="M 120 0 L 0 0 0 120" /></pattern></defs>
               <rect width="720" height="480" class="map-paper"/><rect width="720" height="480" fill="url(#major-grid)" class="map-grid"/>${mapMarkup()}
@@ -163,34 +191,45 @@ function render(): void {
             </form>
             <p class="map-disclaimer">Locked pins always stay exact. Open gaps can be routed on demand with the OpenStreetMap bicycle network; only their endpoints are sent, never locked corridors. Cached results stay on this device for offline export.</p>
           </div>
-          <aside class="ledger" aria-labelledby="ledger-title">
-            <div class="ledger-heading"><div><span>INSPECTION LEDGER</span><h3 id="ledger-title">What must stay?</h3></div><div class="ledger-actions"><button id="optimize-gaps" class="button button--quiet" ${draft.segments.some((segment) => segment.mode === 'gap') ? '' : 'disabled'}>Optimize gaps</button><button id="analyze" class="button button--signal">${analysisVisible ? 'Refresh check' : 'Check route'}</button></div></div>
+          <section class="ledger" aria-labelledby="ledger-title">
+            <div class="ledger-heading"><div><span>ROUTE REVIEW</span><h3 id="ledger-title">Check each segment</h3></div><div class="ledger-actions"><button id="optimize-gaps" class="button button--quiet" ${draft.segments.some((segment) => segment.mode === 'gap') ? '' : 'disabled'}>Optimize gaps</button><button id="analyze" class="button button--signal">${analysisVisible ? 'Refresh check' : 'Check route'}</button></div></div>
             ${summaryMarkup()}
             <ul class="segment-list">${segmentMarkup()}</ul>
-          </aside>
+          </section>
         </div>
         <div class="action-deck">
-          <div><p class="action-label">MASTER OUTPUT</p><h3>Preserve, then export.</h3><p>Locked coordinates remain exact; optimized geometry is written only inside open gaps. Review warnings stay free.</p></div>
+          <div><p class="action-label">GPX export</p><h3>Export the checked route</h3><p>Locked coordinates remain exact. Routed geometry appears only inside open gaps. Warnings remain in the route review.</p></div>
           <div class="action-buttons"><button id="save" class="button">Save on device</button><button id="export-gpx" class="button button--dark" ${draft.points.length >= 2 ? '' : 'disabled'}>Export GPX</button></div>
         </div>
         <div id="message" class="message ${error ? 'message--error' : ''}" role="status" aria-live="polite">${escapeHtml(error || status)}</div>
       </section>
 
       <section class="library" aria-labelledby="library-title">
-        <div class="section-kicker"><span>02</span><h2 id="library-title">Route tape archive</h2><p>This device only</p></div>
-        <div class="library-grid"><div><h3>Saved locally</h3><div id="saved-routes">${savedMarkup()}</div></div><div class="ownership"><p class="stamp">YOUR DATA / YOUR DEVICE</p><h3>Take the whole box with you.</h3><p>Free GPX export always works. Route Tape owners can move the complete local archive between browsers as JSON.</p><div class="ownership-actions"><button id="backup" class="button" ${unlocked ? '' : 'disabled'}>Export archive</button><label class="button button--quiet file-button ${unlocked ? '' : 'is-disabled'}" for="backup-input">Import archive<input id="backup-input" type="file" accept="application/json" ${unlocked ? '' : 'disabled'} /></label></div></div></div>
+        <div class="section-kicker"><span>02</span><h2 id="library-title">Saved routes</h2><p>${demoMode ? 'Separate demo storage' : 'This browser only'}</p></div>
+        <div class="library-grid"><div><h3>Open a saved route</h3><div id="saved-routes">${savedMarkup()}</div></div><div class="ownership"><p class="stamp">LOCAL ROUTE DATA</p><h3>Back up saved routes</h3><p>GPX export is free. A Route Archive license adds JSON backup and restore for the complete local archive.</p><div class="ownership-actions"><button id="backup" class="button" ${unlocked ? '' : 'disabled'}>Export archive</button><label class="button button--quiet file-button ${unlocked ? '' : 'is-disabled'}" for="backup-input">Import archive<input id="backup-input" type="file" accept="application/json" ${unlocked ? '' : 'disabled'} /></label></div></div></div>
+      </section>
+
+      <section class="how-it-works" aria-labelledby="how-title">
+        <p class="section-number">03</p><h2 id="how-title">How it works</h2>
+        <ol><li><h3>Add the route</h3><p>Import GPX or add exact points. New segments start locked.</p></li><li><h3>Mark each segment</h3><p>Keep chosen roads locked. Open only the gaps that need routing.</p></li><li><h3>Check and export</h3><p>Optimize open gaps, inspect warnings, and export standard GPX.</p></li></ol>
+      </section>
+
+      <section class="limits" aria-labelledby="limits-title">
+        <div><p class="section-number">04</p><h2 id="limits-title">What it does not do</h2></div>
+        <p>This planner does not provide turn-by-turn navigation or verify closures, legal access, surfaces, traffic, weather, or rider fitness.</p>
+        <p>No account, analytics, advertising, third-party fonts, or map tiles are required. Gap routing sends only selected endpoints after you choose it.</p>
       </section>
 
       <section class="unlock" aria-labelledby="unlock-title">
-        <div class="unlock-label">ONE-TIME ROUTE TAPE</div>
-        <div><h2 id="unlock-title">Keep an unlimited shelf.</h2><p>US$9 once. Save more than three route tapes and back up or restore the complete archive. GPX import/export, safety warnings, and offline drafting stay free.</p><p class="merchant">Sociobot/Dodo is the merchant of record. Refunds are handled there and revoke the license.</p></div>
+        <div class="unlock-label">ONE-TIME LICENSE</div>
+        <div><h2 id="unlock-title">Save more routes and move your archive</h2><p>US$9 once. Save more than three routes and back up or restore the complete archive. GPX import, export, warnings, and offline drafting stay free.</p><p class="merchant">Sociobot/Dodo is the merchant of record. Refunds are handled there and revoke the license.</p></div>
         <div class="license-box">
-          ${unlocked ? '<p class="unlocked-mark">✓ Route Tape unlocked on this device</p>' : `${billingEnabled ? `<a class="button button--signal buy-link" href="${checkoutUrl()}">Buy Route Tape — $9</a>` : '<p class="purchase-paused">Route Tape purchases are not open yet. The complete free planner remains available now.</p>'}<label for="license-token">Have a license? Paste it</label><div><input id="license-token" autocomplete="off" spellcheck="false" /><button id="restore-license" class="button">Verify</button></div>`}
+          ${unlocked ? '<p class="unlocked-mark">✓ Route Archive license active on this device</p>' : `${billingEnabled ? `<a class="button button--signal buy-link" href="${checkoutUrl()}">Buy Route Archive — $9</a>` : '<p class="purchase-paused">Route Archive purchases are not open yet. The complete free planner remains available.</p>'}<label for="license-token">Have a license? Paste it</label><div><input id="license-token" autocomplete="off" spellcheck="false" /><button id="restore-license" class="button">Verify license</button></div>`}
           <p><a href="/privacy/">Privacy</a> · <a href="/terms/">Terms</a></p>
         </div>
       </section>
     </main>
-    <footer><p><strong>Route Intent Planner</strong> is an advisory planning sheet, not turn-by-turn navigation. Check closures, surfaces, and access locally.</p><p>Original generated cassette artwork; provenance in the project design notes. No tracking or third-party tiles.</p><nav aria-label="Legal"><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="https://www.openstreetmap.org/copyright" rel="external">OpenStreetMap licensing</a></nav></footer>
+    <footer><p><strong>Route Intent Planner</strong> preserves chosen roads and routes only selected gaps. It is not turn-by-turn navigation.</p><p>Built by Param Factory · v1.1.0 · repair-3<br>Original generated artwork; provenance is in the design notes.</p><nav aria-label="Footer navigation"><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="https://www.openstreetmap.org/copyright" rel="external">OpenStreetMap licensing (external)</a></nav></footer>
     <div id="update-toast" class="update-toast" hidden><span>An offline update is ready.</span><button id="apply-update">Apply update</button></div>`;
   bindEvents();
 }
@@ -198,9 +237,30 @@ function render(): void {
 function bindEvents(): void {
   document.querySelector('#route-name')?.addEventListener('change', (event) => commit({ ...draft, name: (event.target as HTMLInputElement).value.trim() || 'Untitled route', updatedAt: new Date().toISOString() }, 'Route renamed.'));
   document.querySelector('#new-route')?.addEventListener('click', () => commit(emptyDraft(), 'New blank route ready.'));
-  document.querySelector('#sample')?.addEventListener('click', () => commit(sampleDraft(), 'Sample loaded. Open the inspection ledger to see one intentional gap.'));
-  document.querySelector('#undo')?.addEventListener('click', () => { const previous = undoStack.pop(); if (!previous) return; redoStack.push(clone(draft)); draft = previous; localStorage.setItem(CURRENT_KEY, JSON.stringify(draft)); status = 'Last change undone.'; render(); });
-  document.querySelector('#redo')?.addEventListener('click', () => { const next = redoStack.pop(); if (!next) return; undoStack.push(clone(draft)); draft = next; localStorage.setItem(CURRENT_KEY, JSON.stringify(draft)); status = 'Change restored.'; render(); });
+  document.querySelector('#undo')?.addEventListener('click', () => { const previous = undoStack.pop(); if (!previous) return; redoStack.push(clone(draft)); draft = previous; persistDraft(); status = 'Last change undone.'; render(); });
+  document.querySelector('#redo')?.addEventListener('click', () => { const next = redoStack.pop(); if (!next) return; undoStack.push(clone(draft)); draft = next; persistDraft(); status = 'Change restored.'; render(); });
+  document.querySelector('#reset-demo')?.addEventListener('click', async () => {
+    localStorage.removeItem(CURRENT_KEY);
+    clearDemoLicense();
+    await clearRoutes('demo');
+    draft = sampleDraft();
+    undoStack = [];
+    redoStack = [];
+    savedRoutes = [];
+    token = null;
+    unlocked = false;
+    analysisVisible = false;
+    persistDraft();
+    status = 'Demo reset to the nine-point London loop.';
+    error = '';
+    render();
+  });
+  document.querySelector('#start-real')?.addEventListener('click', async () => {
+    localStorage.removeItem(CURRENT_KEY);
+    clearDemoLicense();
+    await clearRoutes('demo');
+    location.assign('/');
+  });
   document.querySelector('#remove-last')?.addEventListener('click', () => {
     if (!draft.points.length) return;
     commit({ ...draft, points: draft.points.slice(0, -1), segments: draft.segments.slice(0, -1), updatedAt: new Date().toISOString() }, 'Last point removed.');
@@ -267,21 +327,21 @@ function bindEvents(): void {
   document.querySelector('#analyze')?.addEventListener('click', () => { analysisVisible = true; const count = analyze(draft).filter((item) => item.severity === 'review').length; status = count ? `${count} section${count === 1 ? ' needs' : 's need'} review before the ride.` : 'All sections are locked and within the long-jump check.'; render(); });
   document.querySelector('#export-gpx')?.addEventListener('click', () => download(`${safeName(draft.name)}.gpx`, toGpx(draft), 'application/gpx+xml'));
   document.querySelector('#save')?.addEventListener('click', async () => {
-    if (!unlocked && !savedRoutes.some((route) => route.id === draft.id) && savedRoutes.length >= 3) { error = 'The free archive holds three route tapes. Export GPX, replace an old tape, or unlock the unlimited archive.'; render(); return; }
-    await saveRoute(draft); savedRoutes = await listRoutes(); status = 'Route tape saved on this device.'; render();
+    if (!unlocked && !savedRoutes.some((route) => route.id === draft.id) && savedRoutes.length >= 3) { error = 'The free archive holds three routes. Export GPX, replace a saved route, or use a Route Archive license.'; render(); return; }
+    await saveRoute(draft, storageScope); savedRoutes = await listRoutes(storageScope); status = demoMode ? 'Route saved only in separate demo storage.' : 'Route saved in this browser.'; render();
   });
   document.querySelectorAll<HTMLElement>('[data-open]').forEach((button) => button.addEventListener('click', () => { const route = savedRoutes.find((item) => item.id === button.dataset.open); if (route) commit(clone(route), `Opened ${route.name}.`); }));
-  document.querySelectorAll<HTMLElement>('[data-delete]').forEach((button) => button.addEventListener('click', async () => { const route = savedRoutes.find((item) => item.id === button.dataset.delete); if (!route || !confirm(`Delete “${route.name}” from this device?`)) return; await deleteRoute(route.id); savedRoutes = await listRoutes(); status = 'Saved route deleted. Your current draft was not changed.'; render(); }));
+  document.querySelectorAll<HTMLElement>('[data-delete]').forEach((button) => button.addEventListener('click', async () => { const route = savedRoutes.find((item) => item.id === button.dataset.delete); if (!route || !confirm(`Delete “${route.name}” from this browser?`)) return; await deleteRoute(route.id, storageScope); savedRoutes = await listRoutes(storageScope); status = 'Saved route deleted. Your current draft was not changed.'; render(); }));
   document.querySelector('#backup')?.addEventListener('click', () => download('route-intent-archive.json', JSON.stringify({ version: 1, routes: savedRoutes }, null, 2), 'application/json'));
   document.querySelector('#backup-input')?.addEventListener('change', async (event) => {
     const file = (event.target as HTMLInputElement).files?.[0]; if (!file) return;
-    try { const routes = await importBackup(JSON.parse(await file.text())); savedRoutes = await listRoutes(); status = `${routes.length} route tapes imported.`; render(); }
+    try { const routes = await importBackup(JSON.parse(await file.text()), storageScope); savedRoutes = await listRoutes(storageScope); status = `${routes.length} saved route${routes.length === 1 ? '' : 's'} imported.`; render(); }
     catch (reason) { error = reason instanceof Error ? reason.message : 'That archive is not a Route Intent Planner JSON backup.'; render(); }
   });
   document.querySelector('#restore-license')?.addEventListener('click', async () => {
     const value = (document.querySelector('#license-token') as HTMLInputElement).value.trim(); if (!value) { error = 'Paste your license token first.'; render(); return; }
-    storeLicense(value); token = value; status = 'Checking license…'; render();
-    try { unlocked = await verifyLicense(value, true); status = unlocked ? 'Route Tape unlocked.' : 'That license is not active for this product.'; if (!unlocked) error = status; render(); }
+    storeLicense(value, demoMode); token = value; status = 'Checking license…'; render();
+    try { unlocked = await verifyLicense(value, true, demoMode); status = unlocked ? 'Route Archive license active.' : 'That license is not active for this product.'; if (!unlocked) error = status; render(); }
     catch { error = 'The license service could not be reached. Your free planner still works; try verification again when online.'; render(); }
   });
 }
@@ -296,10 +356,10 @@ async function start(): Promise<void> {
   // Render synchronously so the skip link and first keyboard traversal never
   // race the IndexedDB read with a later wholesale app replacement.
   render();
-  try { savedRoutes = await listRoutes(); } catch { error = 'Local archive is unavailable in this browser. GPX import and export still work.'; }
+  try { savedRoutes = await listRoutes(storageScope); } catch { error = 'Local archive is unavailable in this browser. GPX import and export still work.'; }
   render();
   if (token && navigator.onLine) {
-    try { unlocked = await verifyLicense(token); render(); } catch { /* cached verdict remains; free app never blocks */ }
+    try { unlocked = await verifyLicense(token, false, demoMode); render(); } catch { /* cached verdict remains; free app never blocks */ }
   }
   registerServiceWorker();
 }

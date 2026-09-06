@@ -1,8 +1,8 @@
 {
   "name": "Route Intent Planner",
-  "short_name": "Route Tape",
+  "short_name": "Route Planner",
   "description": "Lock the route segments you intend to ride and inspect every open gap before GPX export.",
-  "start_url": "/?source=pwa&v=2",
+  "start_url": "/?source=pwa&v=3",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f4efdf",
@@ -14,6 +14,6 @@
     { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "New route tape", "url": "/?new=1", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+    { "name": "New cycling route", "url": "/?new=1", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }

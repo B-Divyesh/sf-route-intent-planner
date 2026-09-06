@@ -22,7 +22,12 @@ export async function routeOpenGap(from: RoutedPoint, to: RoutedPoint): Promise<
   const coordinates = `${from.lon},${from.lat};${to.lon},${to.lat}`;
   const url = new URL(`/routed-bike/route/v1/driving/${coordinates}`, BIKE_ROUTER_ORIGIN);
   url.search = new URLSearchParams({ alternatives: 'false', geometries: 'geojson', overview: 'full', steps: 'false' }).toString();
-  const response = await fetch(url, { headers: { Accept: 'application/json' } });
+  let response: Response;
+  try {
+    response = await fetch(url, { headers: { Accept: 'application/json' } });
+  } catch {
+    throw new Error('The bicycle router could not be reached. Your gap and draft are unchanged; check your connection and try again.');
+  }
   if (!response.ok) throw new Error('The bicycle router is unavailable. Your gap and local draft are unchanged; try again when online.');
   const body = await response.json() as RouterResponse;
   const raw = body.routes?.[0]?.geometry?.coordinates;

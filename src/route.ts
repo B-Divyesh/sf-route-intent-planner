@@ -2,7 +2,7 @@ import type { AnalysisItem, RouteDraft, RoutePoint, RouteSegment, RoutedPoint, S
 
 const id = () => crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
 
-export function emptyDraft(name = 'Saturday route tape'): RouteDraft {
+export function emptyDraft(name = 'Saturday cycling route'): RouteDraft {
   const now = new Date().toISOString();
   return { id: id(), name, points: [], segments: [], createdAt: now, updatedAt: now };
 }
@@ -111,7 +111,7 @@ export function parseGpx(xml: string): RouteDraft {
   if (raw.some((point) => point.elevation !== undefined && !Number.isFinite(point.elevation))) {
     throw new Error('One or more GPX elevation values are invalid. Remove or correct the affected <ele> value and try again.');
   }
-  let draft = emptyDraft(document.querySelector('trk > name, rte > name')?.textContent?.trim() || 'Imported route tape');
+  let draft = emptyDraft(document.querySelector('trk > name, rte > name')?.textContent?.trim() || 'Imported cycling route');
   for (const point of raw) draft = addPoint(draft, point);
   return draft;
 }

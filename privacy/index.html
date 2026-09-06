@@ -1,3 +1,41 @@
 <!doctype html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f4efdf"><meta name="description" content="Privacy policy for Route Intent Planner"><link rel="manifest" href="/manifest.json"><link rel="canonical" href="https://route-intent-planner.sociobot.in/privacy/"><title>Privacy — Route Intent Planner</title></head>
-<body><a class="skip-link" href="#main">Skip to privacy policy</a><header class="site-header"><a class="wordmark" href="/"><span>RIP</span><span>Route intent planner</span></a><a href="/">Back to planner</a></header><main id="main" class="legal-page"><p class="eyebrow">Plain-language policy</p><h1>Privacy stays on your side.</h1><p class="legal-updated">Effective 28 August 2026</p><section><h2>What stays on this device</h2><p>Your current route, saved route tapes, archive backups, router results, and license token are stored locally in your browser. GPX and JSON files are read in your browser and exported directly to you.</p></section><section><h2>What leaves this device</h2><p>The planner makes no automatic route, map, analytics, advertising, or tile requests. If you explicitly choose <strong>Optimize gaps</strong>, only each open gap’s two endpoint coordinates are sent to the OpenStreetMap-compatible public bicycle router at routing.openstreetmap.de; locked corridors and saved routes are not sent. When you buy or verify Route Tape, your browser contacts the Sociobot billing API with the license token. Sociobot/Dodo processes checkout as merchant of record; their payment terms apply.</p></section><section><h2>Offline storage and deletion</h2><p>The service worker caches the app shell and artwork so the planner can run offline. Cached optimized gaps remain exportable offline, but new gap optimization requires a connection. Delete individual route tapes inside the planner, clear this site’s browser data to remove everything, or remove the installed app. JSON and GPX files you downloaded remain wherever you saved them.</p></section><section><h2>Contact and changes</h2><p>Questions can be raised through the product repository. Material changes will update the effective date here. We do not sell or share personal data for advertising.</p></section></main><footer><p><strong>Route Intent Planner.</strong> Local-first route intent, without tracking.</p><nav aria-label="Legal"><a href="/">Planner</a><a href="/terms/">Terms</a></nav></footer><script type="module" src="/src/legal.ts"></script></body></html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#f4efdf" />
+    <meta name="description" content="How Route Intent Planner stores route data and when selected gap endpoints leave your browser." />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Privacy — Route Intent Planner" />
+    <meta property="og:description" content="Read what stays in your browser and what is sent when you route an open gap." />
+    <meta property="og:url" content="https://route-intent-planner.sociobot.in/privacy/" />
+    <meta property="og:image" content="https://route-intent-planner.sociobot.in/art/route-intent-social.webp" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Privacy — Route Intent Planner" />
+    <meta name="twitter:description" content="Read what stays in your browser and what is sent when you route an open gap." />
+    <meta name="twitter:image" content="https://route-intent-planner.sociobot.in/art/route-intent-social.webp" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" sizes="180x180" />
+    <link rel="canonical" href="https://route-intent-planner.sociobot.in/privacy/" />
+    <title>Privacy — Route Intent Planner</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to privacy policy</a>
+    <header class="site-header">
+      <a class="wordmark" href="/" aria-label="Route Intent Planner home"><span>RIP</span><span>Route intent planner</span></a>
+      <nav class="site-nav" aria-label="Main navigation"><a href="/">Planner</a><a href="/demo/">Demo</a><a href="/privacy/" aria-current="page">Privacy</a></nav>
+    </header>
+    <main id="main" class="legal-page">
+      <p class="eyebrow">Privacy policy</p>
+      <h1>Privacy for Route Intent Planner</h1>
+      <p class="legal-updated">Effective 6 September 2026</p>
+      <section><h2>What stays in your browser</h2><p>Your current route, saved routes, router results, and license token stay in browser storage.</p><p>GPX and JSON files are read in your browser and exported directly to you.</p></section>
+      <section><h2>What leaves your browser</h2><p>The planner makes no automatic route, map, analytics, advertising, or tile requests.</p><p>When you choose <strong>Optimize gaps</strong>, each open gap’s two endpoints go to the public bicycle router at routing.openstreetmap.de.</p><p>Locked segments and saved routes are not sent.</p><p>License purchase or verification sends your license token to the Sociobot billing API.</p><p>Sociobot/Dodo processes checkout as merchant of record.</p></section>
+      <section><h2>Offline storage and deletion</h2><p>The service worker stores the app files and artwork for offline use.</p><p>Cached routed gaps remain exportable offline. New gap routing needs a connection.</p><p>Delete saved routes in the planner. Clear this site’s browser data to remove all local data.</p><p>Downloaded GPX and JSON files remain where you saved them.</p></section>
+      <section><h2>Privacy questions</h2><p>Open a request in the <a href="https://github.com/B-Divyesh/sf-route-intent-planner" rel="external">public product repository (external)</a>.</p><p>Material policy changes will update the effective date on this page.</p></section>
+    </main>
+    <footer><p><strong>Route Intent Planner</strong> stores routes in your browser and sends only selected gap endpoints for routing.</p><p>Built by Param Factory · v1.1.0 · repair-3</p><nav aria-label="Footer navigation"><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a></nav></footer>
+    <script type="module" src="/src/legal.ts"></script>
+  </body>
+</html>

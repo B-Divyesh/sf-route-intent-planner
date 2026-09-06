@@ -1,5 +1,5 @@
-const CACHE = 'route-tape-shell-v5';
-const SHELL = ['/privacy/', '/terms/', '/offline.html', '/manifest.json', '/art/route-tape-hero.webp', '/icons/icon-192.png', '/icons/icon-512.png'];
+const CACHE = 'route-intent-shell-v6';
+const SHELL = ['/demo/', '/privacy/', '/terms/', '/404.html', '/offline.html', '/manifest.json', '/art/route-tape-hero.webp', '/art/route-intent-social.webp', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
@@ -31,7 +31,7 @@ self.addEventListener('fetch', (event) => {
       const copy = response.clone();
       caches.open(CACHE).then((cache) => cache.put(event.request, copy));
       return response;
-    }).catch(async () => (await caches.match(path, { ignoreSearch: true, ignoreVary: true })) || (await caches.match('/', { ignoreSearch: true, ignoreVary: true })) || caches.match('/offline.html')));
+    }).catch(async () => (await caches.match(path, { ignoreSearch: true, ignoreVary: true })) || caches.match('/offline.html')));
     return;
   }
   event.respondWith(caches.match(path, { ignoreSearch: true, ignoreVary: true }).then((cached) => cached || fetch(event.request).then((response) => {
