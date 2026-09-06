@@ -213,6 +213,11 @@ test('@claim:demo-isolation keeps sample work separate and restores real data wh
   await expect(page.getByRole('heading', { name: 'Plan cycling routes around your chosen roads' })).toBeInViewport();
   await expect(page.getByText('For cyclists and ride leaders who know their roads')).toBeInViewport();
   await expect(page.getByRole('link', { name: 'Try it with sample data' })).toBeInViewport();
+  const factsFit = await page.locator('.hero-notes li').evaluateAll((items) => items.every((item) => {
+    const box = item.getBoundingClientRect();
+    return box.top >= 0 && box.bottom <= innerHeight;
+  }));
+  expect(factsFit).toBe(true);
   await page.getByRole('link', { name: 'Try it with sample data' }).click();
   await expect(page.getByText('Demo — sample data, nothing is saved')).toBeVisible();
   await expect(page.locator('#route-name')).toHaveValue('Canal loop — sample');
