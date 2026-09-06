@@ -1,53 +1,90 @@
 # Route Intent Planner
 
-Route Intent Planner is a local-first drafting sheet for cyclists and ride leaders who already know the roads or paths they want. Draw or import a rough GPX, label and lock mandatory corridors, then explicitly optimize only intentional gaps on an OpenStreetMap-compatible bicycle network. Export standard GPX without a routing engine silently replacing locked route intent.
+Plan cycling routes while keeping chosen roads and paths fixed. Route only the gaps you mark, then export standard GPX.
 
-Live target: <https://route-intent-planner.sociobot.in>.
+It is for cyclists and ride leaders who already know the route they want. It is not turn-by-turn navigation.
 
-## Who it is for
+Live product: <https://route-intent-planner.sociobot.in>
 
-Ride leaders preparing club routes, cyclists recreating a known course, and anyone who values declared route intent over opaque profile optimization. It is advisory planning—not turn-by-turn navigation—and deliberately does not claim to know current closures, legal access, or surface conditions.
+One-click sample: <https://route-intent-planner.sociobot.in/demo/>
 
-## What v1 includes
+## What it does
 
-- Click/tap drafting sheet, exact coordinate entry, and GPX import.
-- Per-segment `locked`, `open gap`, and `flagged` intent with optional road/path names. `Optimize gaps` sends only selected gap endpoints to the public OpenStreetMap bicycle router; locked points and corridors are never sent or changed.
-- Distance and long-jump checks, explicit warnings, undo/redo, and free GPX export.
-- Current-draft recovery and a three-route free archive in IndexedDB.
-- Installable PWA shell with offline drafting, import, editing, saving, and export.
-- Route Tape is prepared as an optional US$9 one-time license for unlimited saved routes and JSON archive backup/restore. Checkout remains hidden until the factory enables the product in the Sociobot catalog; there is no embedded payment provider.
-- No analytics, accounts, runtime fonts, map tiles, or route-coordinate uploads.
+- Draw a route, enter exact coordinates, or import GPX in the browser.
+- Mark each segment as locked, open, or flagged.
+- Send only selected gap endpoints to the public OpenStreetMap bicycle router.
+- Keep authored points and locked segments unchanged during gap routing.
+- Check warnings, undo changes, redo changes, and export GPX for free.
+- Restore the current draft after refresh and store three free routes in IndexedDB.
+- Draft, import, edit, save, and export offline after one connected visit.
+- Export cached routed gaps while offline.
+
+The core planner needs no account, runtime font, or map tile. It makes no automatic analytics, advertising, or off-origin request.
+
+Routes stay in browser storage. Selecting **Optimize gaps** sends that open gap’s two endpoints to `routing.openstreetmap.de`.
+
+## Try the separate demo
+
+Open `/demo/` or select **Try it with sample data** on the first screen. The demo loads a nine-point London canal loop.
+
+Demo data uses `demo:` storage keys and a separate demo IndexedDB database. It never reads or changes real route data.
+
+Use **Reset demo** to restore the sample. Use **Start for real** to clear demo data and return to the real planner.
+
+## Optional Route Archive license
+
+The planned offer is US$9 once. A valid license enables more than three saved routes plus JSON archive backup and restore.
+
+Sales are not open because the Sociobot billing product still needs registration. The product does not show a broken checkout link.
+
+GPX import, GPX export, route warnings, and offline drafting remain free.
 
 ## Run and verify
 
-Requires Node.js 20 or newer.
+Node.js 20 or newer is required.
 
 ```sh
 npm ci
-npm run dev
 npm test
 npm run build
 npm run test:e2e
 ```
 
-The exact production build command is `npm run build`. Static output is written to `dist/`, with `dist/index.html` at its root plus `/privacy/` and `/terms/` pages.
+`npm test` runs route model, validation, and production-policy checks. `npm run test:e2e` builds and serves `dist/` before browser checks.
 
-`npm test` runs deterministic model/export checks. `npm run test:e2e` builds and serves the production output, then checks the full planning/export path, serious/critical axe findings, the 390px layout, and an offline reload in Chromium.
+Every public product claim has one tagged browser test in [`.factory/claims.json`](.factory/claims.json). Run any listed command exactly as written.
 
-## Data and billing configuration
+For a local production preview:
 
-Routes and cached gap geometry remain in browser storage until the user exports or deletes them. The app makes no automatic off-origin request. Gap routing occurs only after a rider presses `Optimize gaps`, and sends only that gap’s two endpoints to `routing.openstreetmap.de`. The app defaults to the production Sociobot billing API; factory staging can switch it without source edits:
+```sh
+npm run build
+npm run preview
+```
+
+The preview is available at `http://127.0.0.1:4173`.
+
+## Data, privacy, and billing
+
+Current drafts use localStorage. Saved routes use IndexedDB. Imports and exports run in the browser.
+
+Gap routing happens only after **Optimize gaps**. The request contains the selected gap’s endpoints.
+
+License verification uses the Sociobot billing API. Public builds default to `https://api.sociobot.in`.
+
+Factory staging can use the pilot API without source changes:
 
 ```sh
 VITE_BILLING_API=https://pilot-api.sociobot.in VITE_BILLING_ENABLED=true npm run build
 ```
 
-The billing URL uses the product slug, never a provider product ID. See [`privacy/index.html`](privacy/index.html), [`terms/index.html`](terms/index.html), and [`.factory/design.md`](.factory/design.md).
+See [Privacy](privacy/index.html), [Terms](terms/index.html), [demo notes](.factory/demo.md), and [design notes](.factory/design.md).
 
 ## Deploy
 
-Serve `dist/` as a static site with clean directory-index routes and HTTPS. `dist/staticwebapp.config.json` is the factory Azure Static Web Apps policy; it gives content-hashed `/assets/*` a one-year immutable cache, keeps `sw.js` and the manifest revalidating, serves the manifest as `application/manifest+json`, and adds CSP plus a locked-down Permissions-Policy. `dist/_headers` carries the equivalent policy for portable static hosts.
+Run `npm run build` and deploy `dist/` as the static site root. Do not deploy source files.
+
+`staticwebapp.config.json` defines response headers, cache rules, and the 404 rewrite. `_headers` contains the portable header policy.
 
 ## License
 
-MIT. Generated product artwork provenance is recorded in `.factory/design.md` and `assets/src/route-tape-hero.json`.
+The code is MIT licensed. Generated artwork provenance is recorded in [`.factory/design.md`](.factory/design.md).

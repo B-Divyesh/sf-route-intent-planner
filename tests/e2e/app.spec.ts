@@ -14,7 +14,8 @@ test('plans, labels, checks, and exports a route', async ({ page }) => {
     buffer: Buffer.from('<?xml version="1.0"?><gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1"><trk><name>Known club route</name><trkseg><trkpt lat="51.50" lon="-0.11"/><trkpt lat="51.51" lon="-0.10"/></trkseg></trk></gpx>'),
   });
   await expect(page.locator('#route-name')).toHaveValue('Known club route');
-  await page.getByRole('button', { name: 'Load sample' }).click();
+  await page.getByRole('link', { name: 'Try it with sample data' }).click();
+  await expect(page).toHaveURL(/\/demo\/?$/);
   await expect(page.locator('.route-stats').getByText('9', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Check route' }).click();
   await expect(page.getByText(/1 section needs review/)).toBeVisible();
@@ -29,22 +30,24 @@ test('legal pages retain landmarks and accessible structure', async ({ page }) =
     await expect(page.locator('main')).toHaveCount(1);
     await expect(page.locator('h1')).toHaveCount(1);
     const results = await new AxeBuilder({ page }).analyze();
-    expect(results.violations.filter((item) => ['serious', 'critical'].includes(item.impact || ''))).toEqual([]);
+    expect(results.violations).toEqual([]);
   }
 });
 
-test('has no serious or critical accessibility violations', async ({ page }) => {
-  await page.goto('/');
-  const results = await new AxeBuilder({ page }).analyze();
-  expect(results.violations.filter((item) => ['serious', 'critical'].includes(item.impact || ''))).toEqual([]);
+test('has no accessibility violations on planner, demo, or not-found pages', async ({ page }) => {
+  for (const path of ['/', '/demo/', '/404.html']) {
+    await page.goto(path);
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(results.violations).toEqual([]);
+  }
 });
 
 test('makes no automatic off-origin request and does not advertise an unregistered checkout', async ({ page }) => {
   const requests: string[] = [];
   page.on('request', (request) => requests.push(request.url()));
   await page.goto('/');
-  await expect(page.getByText('Route Tape purchases are not open yet.')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Buy Route Tape — $9' })).toHaveCount(0);
+  await expect(page.getByText('Route Archive purchases are not open yet.')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Buy Route Archive — $9' })).toHaveCount(0);
   expect(requests.every((url) => new URL(url).origin === 'http://127.0.0.1:4173')).toBe(true);
 });
 
@@ -59,6 +62,19 @@ test('keeps the planner reachable by keyboard and avoids viewport overflow', asy
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 
+test('uses instant state changes when reduced motion is requested', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/demo/');
+  const motion = await page.locator('.button').first().evaluate((element) => ({
+    transitionDuration: getComputedStyle(element).transitionDuration,
+    animationDuration: getComputedStyle(element).animationDuration,
+    scrollBehavior: getComputedStyle(document.documentElement).scrollBehavior,
+  }));
+  expect(Number.parseFloat(motion.transitionDuration)).toBeLessThan(0.001);
+  expect(Number.parseFloat(motion.animationDuration)).toBeLessThan(0.001);
+  expect(motion.scrollBehavior).toBe('auto');
+});
+
 test('works offline after the app shell is installed', async ({ page, context }) => {
   await page.goto('/');
   await page.evaluate(async () => {
@@ -67,7 +83,7 @@ test('works offline after the app shell is installed', async ({ page, context })
   });
   await context.setOffline(true);
   await page.reload();
-  await expect(page.getByRole('heading', { name: /Keep the line/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Plan cycling routes/ })).toBeVisible();
   await expect(page.getByText('Offline — local tools ready')).toBeVisible();
   await context.setOffline(false);
 });
@@ -178,7 +194,7 @@ test('shows visible keyboard focus on file controls and keeps mobile targets at 
     expect(details.outlineWidth).toBe('3px');
     expect(details.height).toBeGreaterThanOrEqual(44);
   }
-  await page.getByRole('button', { name: 'Load sample' }).click();
+  await page.goto('/demo/');
   for (const selector of ['.segment-name', 'footer a', '.license-box a:not(.button)']) {
     const boxes = await page.locator(selector).evaluateAll((elements) => elements.map((element) => {
       const rect = element.getBoundingClientRect();
@@ -186,4 +202,52 @@ test('shows visible keyboard focus on file controls and keeps mobile targets at 
     }));
     expect(boxes.every((box) => box.width >= 44 && box.height >= 44)).toBe(true);
   }
+});
+
+test('@claim:demo-isolation keeps sample work separate and restores real data when leaving the demo', async ({ page }) => {
+  await page.addInitScript(() => {
+    const now = new Date().toISOString();
+    localStorage.setItem('route-intent-planner:current', JSON.stringify({ id: 'real', name: 'REAL-DRAFT-SENTINEL', points: [], segments: [], createdAt: now, updatedAt: now }));
+  });
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Plan cycling routes around your chosen roads' })).toBeInViewport();
+  await expect(page.getByText('For cyclists and ride leaders who know their roads')).toBeInViewport();
+  await expect(page.getByRole('link', { name: 'Try it with sample data' })).toBeInViewport();
+  await page.getByRole('link', { name: 'Try it with sample data' }).click();
+  await expect(page.getByText('Demo — sample data, nothing is saved')).toBeVisible();
+  await expect(page.locator('#route-name')).toHaveValue('Canal loop — sample');
+  await page.locator('#route-name').fill('Changed demo route');
+  await page.locator('#route-name').press('Tab');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('route-intent-planner:current') || '{}').name)).toBe('REAL-DRAFT-SENTINEL');
+  await page.getByRole('button', { name: 'Reset demo' }).click();
+  await expect(page.locator('#route-name')).toHaveValue('Canal loop — sample');
+  await page.getByRole('button', { name: 'Start for real' }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator('#route-name')).toHaveValue('REAL-DRAFT-SENTINEL');
+});
+
+test('opens a blank route from the installed-app shortcut', async ({ page }) => {
+  await page.goto('/demo/');
+  await expect(page.locator('.route-stats strong').first()).toHaveText('9');
+  await page.goto('/?new=1');
+  await expect(page).not.toHaveURL(/new=1/);
+  await expect(page.locator('.route-stats strong').first()).toHaveText('0');
+  await expect(page.locator('#route-name')).toHaveValue('Saturday cycling route');
+});
+
+test('explains how to recover when the bicycle router cannot be reached', async ({ page }) => {
+  await page.route('https://routing.openstreetmap.de/**', (route) => route.abort('failed'));
+  await page.goto('/demo/');
+  await page.getByRole('button', { name: 'Optimize gaps' }).click();
+  await expect(page.locator('#message')).toContainText('could not be reached');
+  await expect(page.locator('#message')).toContainText('check your connection and try again');
+  await expect(page.locator('.route-stats strong').first()).toHaveText('9');
+});
+
+test('serves unknown paths as a designed 404', async ({ page }) => {
+  const response = await page.goto('/this-route-does-not-exist');
+  expect(response?.status()).toBe(404);
+  await expect(page).toHaveTitle('Page not found — Route Intent Planner');
+  await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open the route planner' })).toBeVisible();
 });

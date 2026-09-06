@@ -1,0 +1,107 @@
+[
+  {
+    "id": "demo-isolation",
+    "claim": "The sample demo does not read or change real route data.",
+    "where": "first-screen sample action, demo banner, README",
+    "test": "npm run test:e2e -- --project=chromium-desktop --grep @claim:demo-isolation",
+    "sandbox": "seed a real-route sentinel, enter /demo/, change and reset the sample, then leave and assert the real route is unchanged"
+  },
+  {
+    "id": "locked-intent",
+    "claim": "Routing an open gap keeps every authored route point unchanged.",
+    "where": "planner disclosure, terms, README",
+    "test": "npm run test:e2e -- --project=chromium-desktop --grep @claim:locked-intent",
+    "sandbox": "fresh /demo/ context; recorded router response; exported GPX must retain all nine authored coordinates in order"
+  },
+  {
+    "id": "gaps-only",
+    "claim": "Only segments marked as open gaps are routed.",
+    "where": "first screen, how it works, README",
+    "test": "npm run test:e2e -- --project=chromium-desktop --grep @claim:gaps-only",
+    "sandbox": "fresh /demo/ context; one open gap and seven locked segments; assert one request and one routed result"
+  },
+  {
+    "id": "gap-endpoints-only",
+    "claim": "Gap routing sends only that gap's two endpoints to the public bicycle router.",
+    "where": "planner disclosure, privacy, README",
+    "test": "npm run test:e2e -- --project=chromium-desktop --grep @claim:gap-endpoints-only",
+    "sandbox": "fresh /demo/ context; capture the router request and compare its URL to the sample gap endpoints"
+  },
+  {
+    "id": "gpx-import",
+    "claim": "Imports GPX in the browser.",
+    "where": "planner, how it works, README",
+    "test": "npm run test:e2e -- --project=chromium-desktop --grep @claim:gpx-import",
+    "sandbox": "fresh /demo/ context; upload a two-point GPX and assert the route name, point count, and locked segment"
+  },
+  {
+    "id": "gpx-export-free",
+    "claim": "Standard GPX export remains free.",
+    "where": "first screen, planner, pricing, terms, README",
+    "test": "npm run test:e2e -- --project=chromium-desktop --grep @claim:gpx-export-free",
+    "sandbox": "fresh unlicensed /demo/ context; download GPX and parse the observable file contents"
+  },
+  {
+    "id": "edit-check-history",
+    "claim": "Route checks, warnings, undo, and redo work in the planner.",
+    "where": "planner, README",
+    "test": "npm run test:e2e -- --project=chromium-desktop --grep @claim:edit-check-history",
+    "sandbox": "fresh /demo/ context; run the route check, flag a segment, undo it, and redo it"
+  },
+  {
+    "id": "draft-refresh",
+    "claim": "The current draft survives a refresh.",
+    "where": "planner empty state, README",
+    "test": "npm run test:e2e -- --project=chromium-desktop --grep @claim:draft-refresh",
+    "sandbox": "fresh /demo/ context; rename the sample, reload, and assert its name and nine points return"
+  },
+  {
+    "id": "free-three-routes",
+    "claim": "The free archive stores three routes in IndexedDB.",
+    "where": "pricing, README",
+    "test": "npm run test:e2e -- --project=chromium-desktop --grep @claim:free-three-routes",
+    "sandbox": "fresh /demo/ context; save three distinct routes, then assert a fourth is rejected without replacing them"
+  },
+  {
+    "id": "offline-workflow",
+    "claim": "After one connected visit, drafting, GPX import, editing, saving, and GPX export work offline.",
+    "where": "first screen, offline page, pricing, README",
+    "test": "npm run test:e2e -- --project=chromium-desktop --grep @claim:offline-workflow",
+    "sandbox": "new browser context at /demo/; install the shell, set the context offline, reload, and complete the workflow"
+  },
+  {
+    "id": "offline-cached-export",
+    "claim": "Cached routed gaps remain exportable offline.",
+    "where": "planner disclosure, privacy, README",
+    "test": "npm run test:e2e -- --project=chromium-desktop --grep @claim:offline-cached-export",
+    "sandbox": "new browser context at /demo/; route the sample from a fixture, go offline, reload, and inspect exported GPX"
+  },
+  {
+    "id": "automatic-request-privacy",
+    "claim": "The planner makes no automatic analytics, advertising, map, tile, or other off-origin request.",
+    "where": "privacy, product limits, README",
+    "test": "npm run test:e2e -- --project=chromium-desktop --grep @claim:automatic-request-privacy",
+    "sandbox": "fresh /demo/ context; record every request through check, save, and export; allow same-origin requests only"
+  },
+  {
+    "id": "paid-archive",
+    "claim": "Checkout stays hidden while sales are closed; a valid US$9 one-time license enables extra saves and JSON backup and restore.",
+    "where": "pricing, terms, README",
+    "test": "npm run test:e2e -- --project=chromium-desktop --grep @claim:paid-archive",
+    "sandbox": "fresh /demo/ context with a recorded valid verification response; save four routes, export JSON, delete one, and restore it"
+  },
+  {
+    "id": "local-delete",
+    "claim": "Saved route data stays in browser storage and can be deleted in the planner.",
+    "where": "privacy, README",
+    "test": "npm run test:e2e -- --project=chromium-desktop --grep @claim:local-delete",
+    "sandbox": "fresh /demo/ context; save and delete a route, inspect the demo IndexedDB count, and record outgoing requests"
+  },
+  {
+    "id": "no-account-font-tiles",
+    "claim": "The core planner needs no account, runtime font, or map tile.",
+    "where": "product limits, README",
+    "test": "npm run test:e2e -- --project=chromium-desktop --grep @claim:no-account-font-tiles",
+    "sandbox": "fresh /demo/ context; complete route check and GPX export while recording resource types and request URLs"
+  }
+]

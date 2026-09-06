@@ -59,3 +59,5 @@ The hero is a generated square risograph-style collage used behind the compact i
 - Negative list: no people, no real brands, no logos, no legible text, no watermark, no UI mockup, no gradients, no glossy 3D.
 
 Asset: `public/art/route-tape-hero.webp`. Generated 2026-08-28 with the factory Azure image deployment via `/opt/fleet/lib/gen-image.sh`, then reviewed for malformed content, stray brands/text, and palette fit; optimized locally to WebP. Original generated imagery, licensed for this product. The exact production prompt is stored in `assets/src/route-tape-hero.json`. The footer discloses its generated provenance.
+
+Social asset: `public/art/route-intent-social.webp` at 1200×630. Generated 2026-09-06 with the factory Azure image deployment via `/opt/fleet/lib/gen-image.sh`. The image was reviewed at original resolution: the cassette, route, gap, marks, paper edges, and palette are coherent; there are no people, brands, logos, watermarks, or text artifacts. The source PNG and exact prompt are stored in `assets/src/route-intent-social.png` and `assets/src/route-intent-social.json`. Original generated imagery, licensed for this product.
