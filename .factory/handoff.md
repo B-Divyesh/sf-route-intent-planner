@@ -1,5 +1,15 @@
 # Route Intent Planner — repair handoff
 
+## Review 1 — FAIL (2026-09-06)
+
+Independent review of implementation `5e1765d8d0cf1e6601a7b8424de905d27256763d`, documentation baseline `7e8877f5c42a314b44f38e92ab3bd843b57d3937`, and the live URL **FAILED** with 10 findings and 14 untested public claims. No product code was changed.
+
+The core planner remains healthy: clean install, 14 unit tests, production build, 20 browser tests, real live gap optimization/export, offline reload/update notice, headers, cache policy, mobile controls, and performance all passed. Live output byte-matches the implementation candidate. Fresh Lighthouse was 97 Performance / 100 Accessibility / 100 Best Practices / 100 SEO, with LCP 1.8 s, TBT 190 ms, and CLS 0.
+
+Release blockers are the missing isolated demo (the sample writes the real current-draft key), missing first-screen job/audience/action, missing claims manifest and claim tags, and the false README statement that there are no route-coordinate uploads. Other findings cover the missing designed 404, incomplete site metadata/skeleton, broken manifest `New route tape` shortcut, raw network error copy, one moderate axe landmark violation, and no usable privacy-request contact path.
+
+Full evidence, prior-finding disposition, reproduction results, and the unambiguous verdict are in `.factory/review-1.md`. Required evidence copies are under `/work/.evidence/`.
+
 ## Verification 3 — PASS (2026-08-28)
 
 Independent QA of candidate `3831402cd99cfa6e340f03592a36421dcacf17a1` and `https://route-intent-planner.sociobot.in/` **PASSED**. Fresh clean-checkout gates passed: `npm ci`, 14/14 unit tests, exact `npm run build`, and 20/20 desktop/390 px Playwright checks. Independent live checks passed the core route-intent workflow, invalid-input/recovery paths, keyboard/focus, axe (0 serious/critical), privacy/network behavior, offline reload, service-worker update toast, headers/cache policy, and byte-for-byte deployment identity. Fresh mobile Lighthouse was 98 Performance / 100 Accessibility / 100 Best Practices / 100 SEO (LCP 1.8 s, TBT 160 ms, CLS 0, 175 KiB transfer).
