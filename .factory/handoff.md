@@ -1,60 +1,110 @@
-# Route Intent Planner — repair handoff
+# Route Intent Planner — repair 3 handoff
 
-## Review 1 — FAIL (2026-09-06)
+## Release identity
 
-Independent review of implementation `5e1765d8d0cf1e6601a7b8424de905d27256763d`, documentation baseline `7e8877f5c42a314b44f38e92ab3bd843b57d3937`, and the live URL **FAILED** with 10 findings and 14 untested public claims. No product code was changed.
+- Result: repaired, deployed, and cold-checked on 6 September 2026 UTC.
+- Live URL: `https://route-intent-planner.sociobot.in/`
+- Review baseline: `8a801a4563bb8b14ec0b9ccaf51a5b01f6832c66`
+- Deployed implementation SHA: `5cfeb84dbf3ebeaf16ead4a62bd79abcf9146cbb`
+- Deployment: existing `sf-route-intent-planner` Static Web App, production deployment `23603186-15da-4ef1-a55f-9133fca6b1aa`.
+- The later commit containing this handoff is documentation only. The deployed product remains the implementation SHA above.
 
-The core planner remains healthy: clean install, 14 unit tests, production build, 20 browser tests, real live gap optimization/export, offline reload/update notice, headers, cache policy, mobile controls, and performance all passed. Live output byte-matches the implementation candidate. Fresh Lighthouse was 97 Performance / 100 Accessibility / 100 Best Practices / 100 SEO, with LCP 1.8 s, TBT 190 ms, and CLS 0.
+## What changed
 
-Release blockers are the missing isolated demo (the sample writes the real current-draft key), missing first-screen job/audience/action, missing claims manifest and claim tags, and the false README statement that there are no route-coordinate uploads. Other findings cover the missing designed 404, incomplete site metadata/skeleton, broken manifest `New route tape` shortcut, raw network error copy, one moderate axe landmark violation, and no usable privacy-request contact path.
+- Added a one-click `/demo/` route with the required nine-point London canal sample, persistent demo label, reset action, and real-use exit.
+- Isolated sample state under `demo:` localStorage keys and a separate `demo:route-intent-planner` IndexedDB database. Leaving the demo clears only demo data.
+- Replaced the first-screen copy with the route-planning job, cyclist and ride-leader audience, sample action, action result, and three plain facts. All appear before scrolling at 1440×900 and 390×844.
+- Removed metaphor headings and added the required product, three-step explanation, limits/privacy, paid offer, and consistent footer sections.
+- Added `.factory/claims.json` with one tagged outcome test for each of the 14 reviewed claim groups plus demo isolation.
+- Corrected the README privacy wording: only selected open-gap endpoints leave the browser after `Optimize gaps`.
+- Added a real demo document, route title, navigation, Open Graph/Twitter metadata, 180px Apple icon, sitemap entry, and original 1200×630 social art.
+- Added a designed 404 page and changed static hosting from an all-path home rewrite to a real HTTP 404 response override.
+- Made the installed-app `/?new=1` shortcut create a blank route and remove the consumed parameter.
+- Replaced raw transport errors with a connection and retry message while leaving route data unchanged.
+- Replaced the nested complementary landmark with a labelled section. All-severity axe scans now pass.
+- Added a usable external repository link for privacy requests.
+- Added a CSP-safe offline page, kept the versioned service worker, and advanced the shell cache to `route-intent-shell-v6`.
+- Added a production-like local static server so browser tests observe real 404 behavior rather than Vite SPA fallback behavior.
 
-Full evidence, prior-finding disposition, reproduction results, and the unambiguous verdict are in `.factory/review-1.md`. Required evidence copies are under `/work/.evidence/`.
+## Review 1 finding disposition
 
-## Verification 3 — PASS (2026-08-28)
+| Finding | Disposition | Outcome evidence |
+|---|---|---|
+| F1 sample overwrote real draft | Resolved | `@claim:demo-isolation` changes and resets the sample, then restores an unchanged real-data sentinel. |
+| F2 job, audience, action, and plain words | Resolved | Fresh desktop and phone measurements show the headline, audience, action, action result, and all three facts before scrolling. `.factory/copy-audit.md` has no sentence over 22 words or banned term. |
+| F3 14 untested claims | Resolved | `.factory/claims.json` lists 15 claims; every exact command passed independently. Each ID appears on exactly one outcome test. |
+| F4 false no-coordinate-upload README statement | Resolved | README and Privacy now say the opt-in router receives the selected gap’s two endpoints. |
+| F5 unknown routes returned home with 200 | Resolved | Live `/this-route-does-not-exist` returns HTTP 404 with the designed `Page not found` page and route-planner link. |
+| F6 incomplete site structure and metadata | Resolved | Header navigation, How it works, limits, footer/build id, demo title, route metadata, social image, Apple icon, and sitemap are present. |
+| F7 PWA new-route shortcut did nothing | Resolved | Browser regression opens `/?new=1`, gets a blank route, and confirms the parameter is consumed. |
+| F8 raw router transport error | Resolved | Aborted-request regression shows the connection, unchanged-draft, and retry guidance. |
+| F9 nested complementary landmark | Resolved | The review panel is a labelled section; axe reports zero violations on home, demo, 404, Privacy, and Terms. |
+| F10 no privacy request path | Resolved | Privacy links the live public product repository, which returned HTTP 200. |
 
-Independent QA of candidate `3831402cd99cfa6e340f03592a36421dcacf17a1` and `https://route-intent-planner.sociobot.in/` **PASSED**. Fresh clean-checkout gates passed: `npm ci`, 14/14 unit tests, exact `npm run build`, and 20/20 desktop/390 px Playwright checks. Independent live checks passed the core route-intent workflow, invalid-input/recovery paths, keyboard/focus, axe (0 serious/critical), privacy/network behavior, offline reload, service-worker update toast, headers/cache policy, and byte-for-byte deployment identity. Fresh mobile Lighthouse was 98 Performance / 100 Accessibility / 100 Best Practices / 100 SEO (LCP 1.8 s, TBT 160 ms, CLS 0, 175 KiB transfer).
+## Earlier verification finding disposition
 
-No acceptance-scope defects were found. Full reproducible evidence and exact hashes are in `.factory/verification-3.md`. This verification changes documentation only; it does not alter product code.
+- Out-of-range, missing, blank, and non-numeric GPX coordinates remain rejected with recovery guidance.
+- Invalid archive data remains schema-validated before writes; malformed legacy records are removed without blocking the app.
+- Gap routing remains explicit and gap-only. Export keeps authored endpoints exact and inserts router geometry only inside the selected gap.
+- File inputs retain visible keyboard focus. Checked interactive targets remain at least 44×44 CSS px on the populated 390px layout.
+- Hashed assets remain immutable. The service worker remains no-store. CSP, Permissions-Policy, HSTS, frame denial, referrer policy, and MIME-sniff protection are live.
+- The retired `/manifest.webmanifest` remains a deliberate HTTP 404. The linked `/manifest.json` returns JSON with `no-cache`.
+- The unregistered checkout remains hidden. Paid deliverables, exact US$9 one-time terms, license restore, and validation code remain intact.
+- The researched 85% post-export-correction goal is still an unmeasured field outcome. Deterministic tests prove route integrity, not user adoption or field success.
 
-## Repair 2 — 2026-08-28
+## Verification
 
-Base independently verified: `57ccee2784020002542e9a816ff791ac1a5fddda` (candidate `07de54732863831a53b1729fd26b44bbf1c33c17`). This repair preserves the Vite + TypeScript static PWA and its local-first data model.
+Clean documented setup and gates:
 
-### Repairs made
-
-- **Gap-only routing (P1):** `Optimize gaps` is now an explicit user action that routes only segments marked `Open gap` through the OSM-compatible public bicycle router (`routing.openstreetmap.de`). It sends only each gap's two endpoints, serializes requests at one per second, stores the returned interior geometry locally, and never mutates locked points or corridors. GPX export uses author pins as the exact segment endpoints and inserts geometry only inside an optimized gap. The map, review ledger, privacy policy, terms, README, CSP, and design thesis reflect this behavior. Cached results continue to export offline.
-- **Missing GPX attributes (P1):** GPX parsing now rejects absent, blank, and non-numeric `lat`/`lon` attributes before numeric conversion, closing the `Number(null) === 0` path. Errors identify the bad point and give a correction action; no draft is committed.
-- **Purchase integrity (P1):** public builds default to `https://api.sociobot.in`, not the pilot API, but intentionally hide the checkout link unless `VITE_BILLING_ENABLED=true` is set by release automation. This prevents advertising a purchase that cannot complete while retaining license restore and the production Sociobot integration. At repair time both production and pilot checkout URLs returned `404 {"error":"enabled factory product"}` and the product was absent from both catalogs. Registration is a factory billing-backend action, not available in this repo; no direct payment-provider integration was added.
-- **Keyboard focus and touch targets (P2):** file inputs now fill their labelled 44px buttons and transfer a designed 3px focus outline with `:focus-within`. Segment-name fields, footer/legal links, and license legal links have 44px interactive boxes at 390px. The initial app shell renders synchronously before IndexedDB hydration so normal keyboard traversal does not race the first async render.
-- **Manifest policy (P3):** Privacy and Terms now use `/manifest.json`, the only shipped manifest. The obsolete `.webmanifest` duplicate was removed because Azure serves that extension as octet-stream despite route configuration, and navigation fallback explicitly excludes the old extension so it cannot masquerade as an HTML manifest. The live linked manifest is valid JSON with no-cache policy.
-- The service-worker shell cache is advanced to `route-tape-shell-v5`; the PWA start URL is versioned at `v=2`.
-
-### Exact regression coverage
-
-- Unit coverage (`14` tests) exercises finite WGS84 boundaries; missing latitude, missing longitude, blank latitude/longitude, and non-numeric latitude/longitude; archive schema hardening; headers; and an optimized route export proving original points are retained while the routed interior is inserted only for the gap.
-- Chromium coverage (`20` checks across desktop and 390×844 mobile) exercises all earlier valid flows, offline reload, axe scans, archive recovery, keyboard skip link, no automatic off-origin requests, absence of an unregistered checkout link, malformed GPX variants, visible focus on both upload controls, 44px target measurements, and a mocked OSM router response. The gap test proves no router request happens merely by opening a gap, then confirms the optimized interior and exact locked endpoints in the downloaded GPX.
-
-### Verification evidence
-
-```sh
-npm ci                         # PASS — 61 packages; 0 vulnerabilities
-npm test                       # PASS — 14/14 Vitest checks
-npm run build                  # PASS — tsc + Vite; dist/index.html present
-npm run test:e2e               # PASS — 20/20 Playwright checks (desktop + 390px)
-/opt/fleet/lib/verify-url.sh http://127.0.0.1:4173/ /tmp/route-verify
-                                # PASS — title/lang/h1/main/alt/buttons; 0 page/console errors
+```text
+npm ci             PASS — 61 packages installed; 0 vulnerabilities
+npm test           PASS — 14/14 Vitest checks
+npm run build      PASS — dist/index.html and all public routes produced
+npm run test:e2e   PASS — 58/58 Chromium checks across desktop and 390×844
 ```
 
-Fresh local production Lighthouse 13.4.1 mobile, using Playwright Chromium 145, recorded: **99 Performance**, **100 Accessibility**, **100 Best Practices**, **100 SEO**; LCP **2.0 s**, TBT **80 ms**, CLS **0**, transfer **176 KiB**. The app bundle is 28.39 KB raw / 10.21 KB gzip, CSS 16.07 KB raw / 4.26 KB gzip, and the hero is 139 KB; all static budgets pass. There is no separate lint script; TypeScript checking is part of `npm run build`.
+All 15 exact commands from `.factory/claims.json` passed in isolated desktop claim runs. Offline claims use their own browser contexts.
 
-Local privacy/network smoke confirms no automatic off-origin request on a fresh free-planner load. The only new external request is the user-activated OSM gap route call, explicitly disclosed in the UI and privacy policy and allowed by CSP. Existing offline coverage confirms the controlled PWA reload remains usable with `Offline — local tools ready`; optimized gap geometry is local draft data and therefore exports while offline.
+The Playwright axe integration reported zero violations at every severity on home, demo, 404, Privacy, and Terms. Keyboard skip-link, upload focus, touch targets, reduced motion, route errors, GPX boundaries, archive recovery, privacy requests, demo isolation, and mobile overflow checks passed.
 
-### Release status and next action
+`/opt/fleet/lib/verify-url.sh` passed locally and live. The final live result had one title, one `h1`, one `main`, `lang=en`, no missing alt text, no unnamed button, and no console or page error.
 
-The code, quality gates, PWA, accessibility, mobile targets, and response policy configuration are ready for static deployment. The deployed app honestly marks purchases unavailable rather than linking to a 404. When the factory enables/registers `route-intent-planner` in the Sociobot billing catalog and the production checkout reaches hosted checkout, deploy with `VITE_BILLING_ENABLED=true` and rerun a direct checkout smoke test plus live identity/header checks. No other known product-code gaps remain from verification 2.
+Fresh live mobile Lighthouse:
 
-### Deployment evidence
+| Performance | Accessibility | Best practices | SEO | FCP | LCP | TBT | CLS | Transfer |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 100 | 100 | 100 | 100 | 0.9 s | 1.7 s | 50 ms | 0 | 178 KiB |
 
-Static deployment completed at `https://route-intent-planner.sociobot.in/` from product commit `5e1765d`. Live desktop and 390×844 Chromium smoke found one `h1`, the paused-purchase notice, no buy link, no horizontal overflow, and zero console/page errors. `/opt/fleet/lib/verify-url.sh` passed against the live URL. Byte-for-byte SHA-256 comparisons passed for the live index, all referenced JS/CSS, service worker, linked manifest, offline page, and hero artwork.
+Production bundle sizes: app JavaScript 31.91 KB raw / 11.26 KB gzip; CSS 18.72 KB raw / 4.77 KB gzip; hero WebP 139 KB; no font payload. The social image is 154 KB and is metadata-only, not an initial render request.
 
-Live policy checks confirmed immutable hashed assets, `sw.js` no-store, CSP, Permissions-Policy, X-Frame-Options, and X-Content-Type-Options. `/manifest.json` is `application/json` with no-cache; the obsolete `/manifest.webmanifest` now returns 404 rather than navigation-fallback HTML. The external production checkout remains HTTP 404, which is why the deployed UI has no checkout link.
+Fresh live desktop and phone browser checks found:
+
+- the job, audience, sample action, action result, and three facts before scrolling;
+- no horizontal overflow, console error, page error, or automatic off-origin request;
+- a persistent demo banner, nine points, eight segments, `Canal towpath`, and `Check river crossing`;
+- one route-review warning and a nine-point GPX download;
+- reset restored the sample, while `LIVE-REAL-SENTINEL` remained unchanged during and after demo mode;
+- offline reload at `/demo/` restored the title, nine points, and `Offline — local tools ready`;
+- a controlled service-worker replacement reached `registration.waiting` and displayed `An offline update is ready`.
+
+Live byte comparisons matched local `dist/` for home, Demo, Privacy, Terms, 404, offline page, service worker, manifest, app JS, CSS, both artwork files, and all four icons.
+
+## Evidence
+
+- `/work/.evidence/live-repair3-desktop-first.png`
+- `/work/.evidence/live-repair3-phone-first.png`
+- `/work/.evidence/live-repair3-desktop-demo.png`
+- `/work/.evidence/live-repair3-phone-demo.png`
+- `/work/.evidence/lighthouse-live-repair3-final.json`
+- `/work/.evidence/verify-url-live-repair3-final/`
+- `/work/.evidence/catalog-description.txt`
+- `/work/.evidence/billing-offer.json`
+
+## Remaining dependencies and gaps
+
+- The factory billing operator must register `route-intent-planner` before sales can open. Until then checkout is deliberately hidden; the free planner is complete.
+- Gap optimization depends on the public `routing.openstreetmap.de` bicycle endpoint after explicit user action. Offline editing and cached exports do not depend on it.
+- Route output is advisory. The product cannot verify current access, closures, surfaces, traffic, weather, or rider fitness.
+- The 85% field success measure requires observation from real ride leaders after release.
+
+This is a static PWA with browser-local state. Backend tenant isolation, server restart persistence, health, SQLite, and product-owned 429 checks do not apply.
